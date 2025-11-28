@@ -12,6 +12,7 @@ export interface DiscreteConfig {
   gridResolution: number;
   maxIterations: number;
   mutationRate: number; // 0.0 to 1.0
+  startPoint?: { x: number; y: number }; // Entrance point for corridor network (in grid coordinates)
   weights: {
     compactness: number; // Reward touching neighbors
     adjacency: number;   // Reward satisfying connectivity graph

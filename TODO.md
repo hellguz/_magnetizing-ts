@@ -1,16 +1,15 @@
 # magnetizing-fpg-ts - Implementation Roadmap
 
-## Phase 1: Foundation ⏳
+## Phase 1: Foundation ✓
 - [x] Project structure & docs
-- [ ] TypeScript config
-- [ ] Package.json setup
-- [ ] Constants & Types
-- [ ] Vector2 + tests
-- [ ] GridBuffer + tests
+- [x] TypeScript config
+- [x] Package.json setup
+- [x] Constants & Types
+- [x] Vector2 + tests
+- [x] GridBuffer + tests
 
 ## Phase 2: Discrete Solver
 - [ ] Random utility (PCG/Mulberry32)
-- [ ] GridBuffer rasterization
 - [ ] Room placement logic
 - [ ] Mutation & scoring
 - [ ] Evolutionary loop

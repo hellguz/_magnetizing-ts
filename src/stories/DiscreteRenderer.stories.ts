@@ -4,14 +4,179 @@ import { Point } from '../core/grid/GridBuffer.js';
 import { RoomRequest, Adjacency, CorridorRule } from '../types.js';
 import { CELL_EMPTY, CELL_OUT_OF_BOUNDS, CELL_CORRIDOR } from '../constants.js';
 
+type TemplateType = 'small-apartment' | 'office-suite' | 'house' | 'gallery' | 'clinic' | 'restaurant';
+
+interface RoomTemplate {
+  boundary: Point[];
+  rooms: RoomRequest[];
+  adjacencies: Adjacency[];
+  startPoint: { x: number; y: number };
+}
+
 interface DiscreteRendererArgs {
+  template: TemplateType;
   gridResolution: number;
   mutationRate: number;
   maxIterations: number;
   cellSize: number;
   showGrid: boolean;
   showStartPoint: boolean;
+  showAdjacencies: boolean;
 }
+
+// Room configuration templates
+const templates: Record<TemplateType, RoomTemplate> = {
+  'small-apartment': {
+    boundary: [
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+      { x: 50, y: 40 },
+      { x: 0, y: 40 },
+    ],
+    rooms: [
+      { id: 'living', targetArea: 200, minRatio: 1.0, maxRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'kitchen', targetArea: 120, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bedroom', targetArea: 150, minRatio: 0.9, maxRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'bathroom', targetArea: 60, minRatio: 0.7, maxRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
+    ],
+    adjacencies: [
+      { a: 'living', b: 'kitchen', weight: 2.0 },
+      { a: 'kitchen', b: 'bathroom', weight: 1.5 },
+      { a: 'bedroom', b: 'bathroom', weight: 1.0 },
+    ],
+    startPoint: { x: 25, y: 20 },
+  },
+  'office-suite': {
+    boundary: [
+      { x: 0, y: 0 },
+      { x: 60, y: 0 },
+      { x: 60, y: 50 },
+      { x: 0, y: 50 },
+    ],
+    rooms: [
+      { id: 'reception', targetArea: 180, minRatio: 1.2, maxRatio: 1.8, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'office-1', targetArea: 140, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'office-2', targetArea: 140, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'office-3', targetArea: 140, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'meeting', targetArea: 200, minRatio: 1.0, maxRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'restroom', targetArea: 80, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+    ],
+    adjacencies: [
+      { a: 'reception', b: 'office-1', weight: 1.5 },
+      { a: 'reception', b: 'office-2', weight: 1.5 },
+      { a: 'reception', b: 'office-3', weight: 1.5 },
+      { a: 'reception', b: 'meeting', weight: 2.0 },
+      { a: 'meeting', b: 'restroom', weight: 1.0 },
+    ],
+    startPoint: { x: 30, y: 5 },
+  },
+  'house': {
+    boundary: [
+      { x: 0, y: 0 },
+      { x: 70, y: 0 },
+      { x: 70, y: 60 },
+      { x: 0, y: 60 },
+    ],
+    rooms: [
+      { id: 'entry', targetArea: 100, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'living', targetArea: 300, minRatio: 1.2, maxRatio: 1.6, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'dining', targetArea: 180, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'kitchen', targetArea: 200, minRatio: 0.9, maxRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'bedroom-1', targetArea: 200, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bedroom-2', targetArea: 180, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bath-1', targetArea: 80, minRatio: 0.7, maxRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bath-2', targetArea: 60, minRatio: 0.7, maxRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
+    ],
+    adjacencies: [
+      { a: 'entry', b: 'living', weight: 2.5 },
+      { a: 'living', b: 'dining', weight: 2.0 },
+      { a: 'dining', b: 'kitchen', weight: 2.5 },
+      { a: 'entry', b: 'bedroom-1', weight: 1.0 },
+      { a: 'entry', b: 'bedroom-2', weight: 1.0 },
+      { a: 'bedroom-1', b: 'bath-1', weight: 2.0 },
+      { a: 'bedroom-2', b: 'bath-2', weight: 2.0 },
+    ],
+    startPoint: { x: 35, y: 5 },
+  },
+  'gallery': {
+    boundary: [
+      { x: 0, y: 0 },
+      { x: 80, y: 0 },
+      { x: 80, y: 40 },
+      { x: 0, y: 40 },
+    ],
+    rooms: [
+      { id: 'lobby', targetArea: 250, minRatio: 1.5, maxRatio: 2.0, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'gallery-a', targetArea: 300, minRatio: 1.2, maxRatio: 1.8, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'gallery-b', targetArea: 300, minRatio: 1.2, maxRatio: 1.8, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'gallery-c', targetArea: 250, minRatio: 1.0, maxRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'storage', targetArea: 120, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+    ],
+    adjacencies: [
+      { a: 'lobby', b: 'gallery-a', weight: 2.0 },
+      { a: 'lobby', b: 'gallery-b', weight: 2.0 },
+      { a: 'lobby', b: 'gallery-c', weight: 2.0 },
+      { a: 'gallery-a', b: 'gallery-b', weight: 1.5 },
+      { a: 'gallery-b', b: 'gallery-c', weight: 1.5 },
+      { a: 'lobby', b: 'storage', weight: 1.0 },
+    ],
+    startPoint: { x: 40, y: 5 },
+  },
+  'clinic': {
+    boundary: [
+      { x: 0, y: 0 },
+      { x: 55, y: 0 },
+      { x: 55, y: 45 },
+      { x: 0, y: 45 },
+    ],
+    rooms: [
+      { id: 'waiting', targetArea: 200, minRatio: 1.3, maxRatio: 1.7, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'reception', targetArea: 100, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'exam-1', targetArea: 120, minRatio: 0.9, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'exam-2', targetArea: 120, minRatio: 0.9, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'exam-3', targetArea: 120, minRatio: 0.9, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'lab', targetArea: 150, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'staff', targetArea: 90, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+    ],
+    adjacencies: [
+      { a: 'waiting', b: 'reception', weight: 2.5 },
+      { a: 'reception', b: 'exam-1', weight: 1.5 },
+      { a: 'reception', b: 'exam-2', weight: 1.5 },
+      { a: 'reception', b: 'exam-3', weight: 1.5 },
+      { a: 'reception', b: 'lab', weight: 2.0 },
+      { a: 'reception', b: 'staff', weight: 1.0 },
+      { a: 'lab', b: 'exam-1', weight: 1.0 },
+    ],
+    startPoint: { x: 27, y: 5 },
+  },
+  'restaurant': {
+    boundary: [
+      { x: 0, y: 0 },
+      { x: 65, y: 0 },
+      { x: 65, y: 55 },
+      { x: 0, y: 55 },
+    ],
+    rooms: [
+      { id: 'entrance', targetArea: 80, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'dining-main', targetArea: 400, minRatio: 1.3, maxRatio: 1.7, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'dining-private', targetArea: 150, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bar', targetArea: 180, minRatio: 1.5, maxRatio: 2.0, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'kitchen', targetArea: 250, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'storage', targetArea: 100, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'restrooms', targetArea: 120, minRatio: 0.9, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+    ],
+    adjacencies: [
+      { a: 'entrance', b: 'dining-main', weight: 2.5 },
+      { a: 'entrance', b: 'bar', weight: 2.0 },
+      { a: 'dining-main', b: 'dining-private', weight: 1.5 },
+      { a: 'dining-main', b: 'kitchen', weight: 2.5 },
+      { a: 'bar', b: 'kitchen', weight: 2.0 },
+      { a: 'kitchen', b: 'storage', weight: 2.0 },
+      { a: 'entrance', b: 'restrooms', weight: 1.5 },
+    ],
+    startPoint: { x: 32, y: 5 },
+  },
+};
 
 const createRenderer = (args: DiscreteRendererArgs) => {
   const container = document.createElement('div');
@@ -21,52 +186,9 @@ const createRenderer = (args: DiscreteRendererArgs) => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return container;
 
-  // Define boundary
-  const boundary: Point[] = [
-    { x: 0, y: 0 },
-    { x: 50, y: 0 },
-    { x: 50, y: 40 },
-    { x: 0, y: 40 },
-  ];
-
-  // Define rooms with corridor rules
-  const rooms: RoomRequest[] = [
-    {
-      id: 'living-room',
-      targetArea: 200,
-      minRatio: 1.0,
-      maxRatio: 1.5,
-      corridorRule: CorridorRule.TWO_SIDES,
-    },
-    {
-      id: 'kitchen',
-      targetArea: 120,
-      minRatio: 0.8,
-      maxRatio: 1.2,
-      corridorRule: CorridorRule.ONE_SIDE,
-    },
-    {
-      id: 'bedroom',
-      targetArea: 150,
-      minRatio: 0.9,
-      maxRatio: 1.3,
-      corridorRule: CorridorRule.TWO_SIDES,
-    },
-    {
-      id: 'bathroom',
-      targetArea: 60,
-      minRatio: 0.7,
-      maxRatio: 1.0,
-      corridorRule: CorridorRule.ONE_SIDE,
-    },
-  ];
-
-  // Define adjacencies
-  const adjacencies: Adjacency[] = [
-    { a: 'living-room', b: 'kitchen', weight: 2.0 },
-    { a: 'kitchen', b: 'bathroom', weight: 1.5 },
-    { a: 'bedroom', b: 'bathroom', weight: 1.0 },
-  ];
+  // Get template
+  const template = templates[args.template];
+  const { boundary, rooms, adjacencies, startPoint } = template;
 
   // Create solver with start point for corridor network
   const solver = new DiscreteSolver(
@@ -77,7 +199,7 @@ const createRenderer = (args: DiscreteRendererArgs) => {
       gridResolution: args.gridResolution,
       maxIterations: args.maxIterations,
       mutationRate: args.mutationRate,
-      startPoint: { x: 25, y: 20 }, // Center of the boundary (in grid coordinates)
+      startPoint,
       weights: {
         compactness: 2.0,
         adjacency: 3.0,
@@ -138,12 +260,36 @@ const createRenderer = (args: DiscreteRendererArgs) => {
     }
   }
 
+  // Draw adjacencies (connections between rooms) if enabled
+  if (args.showAdjacencies) {
+    adjacencies.forEach((adj) => {
+      const roomA = placedRooms.get(adj.a);
+      const roomB = placedRooms.get(adj.b);
+
+      if (roomA && roomB) {
+        const centerAx = (roomA.x + roomA.width / 2) * args.cellSize;
+        const centerAy = (roomA.y + roomA.height / 2) * args.cellSize;
+        const centerBx = (roomB.x + roomB.width / 2) * args.cellSize;
+        const centerBy = (roomB.y + roomB.height / 2) * args.cellSize;
+
+        // Draw line with thickness based on weight
+        const lineWidth = (adj.weight ?? 1.0) * 1.5;
+        ctx.strokeStyle = 'rgba(255, 100, 100, 0.6)';
+        ctx.lineWidth = lineWidth;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(centerAx, centerAy);
+        ctx.lineTo(centerBx, centerBy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+  }
+
   // Draw start point marker if enabled
   if (args.showStartPoint) {
-    const startX = 25; // Should match the solver config
-    const startY = 20;
-    const markerX = (startX + 0.5) * args.cellSize;
-    const markerY = (startY + 0.5) * args.cellSize;
+    const markerX = (startPoint.x + 0.5) * args.cellSize;
+    const markerY = (startPoint.y + 0.5) * args.cellSize;
 
     // Draw a star or circle to mark the entrance
     ctx.fillStyle = '#ff0000';
@@ -159,13 +305,27 @@ const createRenderer = (args: DiscreteRendererArgs) => {
 
   // Draw room labels
   ctx.fillStyle = '#000000';
-  ctx.font = '12px sans-serif';
+  ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   placedRooms.forEach((room) => {
     const centerX = (room.x + room.width / 2) * args.cellSize;
     const centerY = (room.y + room.height / 2) * args.cellSize;
+
+    // Draw background for text
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    const textMetrics = ctx.measureText(room.id);
+    const padding = 2;
+    ctx.fillRect(
+      centerX - textMetrics.width / 2 - padding,
+      centerY - 6,
+      textMetrics.width + padding * 2,
+      12
+    );
+
+    // Draw text
+    ctx.fillStyle = '#000000';
     ctx.fillText(room.id, centerX, centerY);
   });
 
@@ -189,10 +349,15 @@ const createRenderer = (args: DiscreteRendererArgs) => {
 };
 
 const meta: Meta<DiscreteRendererArgs> = {
-  title: 'Solvers/Discrete Renderer',
+  title: 'Solvers/Discrete Solver',
   tags: ['autodocs'],
   render: createRenderer,
   argTypes: {
+    template: {
+      control: { type: 'select' },
+      options: ['small-apartment', 'office-suite', 'house', 'gallery', 'clinic', 'restaurant'],
+      description: 'Room configuration template',
+    },
     gridResolution: {
       control: { type: 'range', min: 0.5, max: 2.0, step: 0.1 },
       description: 'Grid resolution in meters per cell',
@@ -206,7 +371,7 @@ const meta: Meta<DiscreteRendererArgs> = {
       description: 'Maximum number of iterations',
     },
     cellSize: {
-      control: { type: 'range', min: 5, max: 30, step: 1 },
+      control: { type: 'range', min: 5, max: 20, step: 1 },
       description: 'Visual size of each grid cell in pixels',
     },
     showGrid: {
@@ -217,63 +382,25 @@ const meta: Meta<DiscreteRendererArgs> = {
       control: { type: 'boolean' },
       description: 'Show start point (entrance) marker',
     },
+    showAdjacencies: {
+      control: { type: 'boolean' },
+      description: 'Show adjacency connections between rooms',
+    },
   },
 };
 
 export default meta;
 type Story = StoryObj<DiscreteRendererArgs>;
 
-export const Default: Story = {
+export const Interactive: Story = {
   args: {
+    template: 'small-apartment',
     gridResolution: 1.0,
     mutationRate: 0.3,
     maxIterations: 100,
     cellSize: 12,
     showGrid: true,
     showStartPoint: true,
-  },
-};
-
-export const HighResolution: Story = {
-  args: {
-    gridResolution: 0.5,
-    mutationRate: 0.3,
-    maxIterations: 100,
-    cellSize: 8,
-    showGrid: false,
-    showStartPoint: true,
-  },
-};
-
-export const LowMutation: Story = {
-  args: {
-    gridResolution: 1.0,
-    mutationRate: 0.1,
-    maxIterations: 200,
-    cellSize: 12,
-    showGrid: true,
-    showStartPoint: false,
-  },
-};
-
-export const HighMutation: Story = {
-  args: {
-    gridResolution: 1.0,
-    mutationRate: 0.7,
-    maxIterations: 200,
-    cellSize: 12,
-    showGrid: true,
-    showStartPoint: false,
-  },
-};
-
-export const CorridorConnectivity: Story = {
-  args: {
-    gridResolution: 1.0,
-    mutationRate: 0.3,
-    maxIterations: 150,
-    cellSize: 14,
-    showGrid: true,
-    showStartPoint: true,
+    showAdjacencies: true,
   },
 };

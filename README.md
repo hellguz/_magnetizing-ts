@@ -1,105 +1,63 @@
 # magnetizing-fpg-ts
 
-High-performance headless TypeScript library for procedural floor plan generation using a hybrid Discrete-Continuous Evolutionary Strategy.
+TypeScript library for procedural floor plan generation using hybrid Discrete-Continuous Evolutionary Strategy.
 
 ## Features
 
-✅ **Zero Magic Numbers** - All behavior controlled by explicit configuration
-✅ **Strict TypeScript** - No `any`, full type safety
-✅ **Data-Oriented Design** - Int32Array grids, static vector math
-✅ **Deterministic** - Seeded PRNG for reproducible results
-✅ **Physics-Based** - Spring solver with Symplectic Euler integration
-✅ **Clipper Integration** - Precise polygon operations
-
-## Project Status
-
-**Complete** ✓
-- [x] Discrete Solver (grid-based topological optimization)
-- [x] Spring Solver (physics-based geometric refinement)
-- [x] Interactive Storybook visualizations
-- [x] Comprehensive test suite (110+ tests)
-- [x] Working examples
+- **Discrete Solver**: Grid-based evolutionary placement with connected corridor network
+- **Spring Solver**: Physics-based geometric refinement
+- **Strict TypeScript**: Full type safety, Int32Array grids
+- **Deterministic**: Seeded PRNG for reproducible results
 
 ## Quick Start
 
 ```bash
-# Install dependencies
-yarn install
-
-# Build the library
-yarn build
-
-# Run tests
-yarn test
-
-# Development mode (watch)
-yarn dev
-
-# Run example
-yarn example
-
-# Launch Storybook (interactive visualizations)
-yarn storybook
+npm install
+npm run build
+npm test
+npm run storybook  # Interactive visualizations
 ```
 
 ## Usage
 
 ```typescript
-import { DiscreteSolver, SpringSolver } from 'magnetizing-fpg-ts';
+import { DiscreteSolver, CorridorRule } from 'magnetizing-fpg-ts';
 
-// 1. Define boundary
 const boundary = [
-  { x: 0, y: 0 },
-  { x: 50, y: 0 },
-  { x: 50, y: 40 },
-  { x: 0, y: 40 },
+  { x: 0, y: 0 }, { x: 50, y: 0 },
+  { x: 50, y: 40 }, { x: 0, y: 40 },
 ];
 
-// 2. Define rooms
 const rooms = [
-  { id: 'living-room', targetArea: 200, minRatio: 1.0, maxRatio: 1.5 },
-  { id: 'kitchen', targetArea: 120, minRatio: 0.8, maxRatio: 1.2 },
+  { id: 'living', targetArea: 200, minRatio: 1.0, maxRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
+  { id: 'kitchen', targetArea: 120, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
 ];
 
-// 3. Define adjacencies
 const adjacencies = [
-  { a: 'living-room', b: 'kitchen', weight: 2.0 }
+  { a: 'living', b: 'kitchen', weight: 2.0 }
 ];
 
-// 4. Run discrete solver
-const discrete = new DiscreteSolver(boundary, rooms, adjacencies);
-discrete.solve();
+const solver = new DiscreteSolver(boundary, rooms, adjacencies, {
+  gridResolution: 1.0,
+  maxIterations: 100,
+  mutationRate: 0.3,
+  startPoint: { x: 25, y: 20 }, // Entrance point
+  weights: { compactness: 2.0, adjacency: 3.0, corridor: 0.5 }
+});
 
-// 5. Run spring solver
-const roomStates = /* convert discrete result */;
-const spring = new SpringSolver(roomStates, boundary, adjacencies);
-spring.simulate(500);
-
-const finalLayout = spring.getState();
+const grid = solver.solve();
 ```
 
-See [examples/basic-usage.ts](examples/basic-usage.ts) for complete workflow.
+See [examples/](examples/) for complete workflows.
 
-## Documentation
+## Corridor System
 
-- [docs/SPEC.md](docs/SPEC.md) - Complete technical specification
-- [TODO.md](TODO.md) - Implementation roadmap
-- [STORYBOOK.md](STORYBOOK.md) - Interactive visualization guide
-- [examples/](examples/) - Usage examples
+Rooms stamp corridors during placement. Connectivity enforced via "magnetizing" constraint - rooms must attach to existing corridor network from start point. Single connected network guaranteed.
 
-## Architecture
+## Docs
 
-```
-src/
-├── index.ts          # Public API
-├── types.ts          # Type definitions
-├── constants.ts      # Configuration constants
-├── core/
-│   ├── geometry/     # Vector math & polygon utilities
-│   ├── grid/         # Grid buffer (Int32Array)
-│   └── solvers/      # Discrete & Spring solvers
-└── utils/            # PRNG & helpers
-```
+- [STORYBOOK.md](STORYBOOK.md) - Visualizations
+- [docs/SPEC.md](docs/SPEC.md) - Technical spec
 
 ## License
 

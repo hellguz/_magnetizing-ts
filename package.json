@@ -1,0 +1,43 @@
+{
+  "name": "magnetizing-fpg-ts",
+  "version": "0.1.0",
+  "description": "High-performance headless TypeScript library for procedural floor plan generation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "floor-plan",
+    "procedural-generation",
+    "evolutionary-algorithm",
+    "physics-simulation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "clipper-lib": "^1.0.0"
+  }
+}

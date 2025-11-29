@@ -1,8 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(yarn build)"
-    ],
+    "allow": ["Bash(yarn build)", "Bash(yarn add:*)"],
     "deny": [],
     "ask": []
   }

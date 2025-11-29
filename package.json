@@ -41,6 +41,8 @@
     "@storybook/addon-essentials": "^7.6.0",
     "@storybook/html": "^7.6.0",
     "@storybook/html-vite": "^7.6.0",
+    "@storybook/react": "^7.6.20",
+    "@storybook/react-vite": "^7.6.20",
     "@vitest/ui": "^4.0.14",
     "leva": "^0.9.35",
     "react": "^18.2.0",
@@ -52,6 +54,11 @@
     "vitest": "^1.0.0"
   },
   "dependencies": {
-    "clipper-lib": "^1.0.0"
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@types/three": "^0.181.0",
+    "clipper-lib": "^1.0.0",
+    "three": "^0.160.1",
+    "uuid": "^13.0.0"
   }
 }

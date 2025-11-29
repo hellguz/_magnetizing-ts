@@ -13,15 +13,13 @@ const DEFAULT_ASPECT_RATIO_MUTATION_RATE = 0.3;
 
 /**
  * Spring solver using Evolutionary Strategy (Genetic Algorithm).
- * This is the re-architected version based on the original C# SpringSystem_ES.
+ * Based on the original C# SpringSystem_ES implementation.
  *
- * Key differences from physics-based approach:
+ * Key features:
  * - Population-based optimization (multiple candidate solutions)
- * - "Squish" collision resolution (reshape rooms, not just push)
+ * - "Squish" collision resolution (reshape rooms before translating)
  * - Dual-objective fitness (geometric validity + topological adjacency)
  * - Genetic operators (crossover, mutation, selection)
- *
- * For the legacy physics-based implementation, see SpringSolverPhysics.ts
  */
 export class SpringSolver {
   private geneCollection: GeneCollection;

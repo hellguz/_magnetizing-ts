@@ -31,19 +31,6 @@ export interface SpringConfig {
   aspectRatioMutationRate: number; // Probability of aspect ratio mutation (0.0 to 1.0)
 }
 
-// Legacy physics-based config (preserved for SpringSolverPhysics)
-export interface SpringConfigPhysics {
-  timestep: number;    // e.g., 0.016
-  friction: number;    // e.g., 0.90
-  maxVelocity: number; // e.g., 50.0
-  forces: {
-    adjacency: number;   // Spring constant k
-    repulsion: number;   // Overlap penalty
-    boundary: number;    // Containment force
-    aspectRatio: number; // Form preservation
-  };
-}
-
 export interface RoomRequest {
   id: string;
   targetArea: number;

@@ -489,7 +489,6 @@ const createRenderer = (args: DiscreteRendererArgs) => {
 
 const meta: Meta<DiscreteRendererArgs> = {
   title: 'Solvers/Discrete Solver',
-  tags: ['autodocs'],
   render: createRenderer,
   argTypes: {
     template: {

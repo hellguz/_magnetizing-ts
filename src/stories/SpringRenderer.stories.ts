@@ -554,8 +554,7 @@ const createRenderer = (args: SpringRendererArgs) => {
 };
 
 const meta: Meta<SpringRendererArgs> = {
-  title: 'Solvers/Spring Solver (Evolutionary)',
-  tags: ['autodocs'],
+  title: 'Solvers/Spring Solver',
   render: createRenderer,
   argTypes: {
     template: {
@@ -620,7 +619,7 @@ const meta: Meta<SpringRendererArgs> = {
 export default meta;
 type Story = StoryObj<SpringRendererArgs>;
 
-export const EvolutionaryStrategy: Story = {
+export const Default: Story = {
   args: {
     template: 'small-apartment',
     populationSize: 15,
@@ -629,42 +628,6 @@ export const EvolutionaryStrategy: Story = {
     crossoverRate: 0.5,
     selectionPressure: 0.3,
     fitnessBalance: 0.5,
-    aspectRatioMutationRate: 0.3,
-    boundaryScale: 1.0,
-    autoPlay: false,
-    showAdjacencies: true,
-    showBoundary: true,
-    showPopulation: false,
-  },
-};
-
-export const HighMutation: Story = {
-  args: {
-    template: 'office-suite',
-    populationSize: 20,
-    mutationRate: 0.7,
-    mutationStrength: 20,
-    crossoverRate: 0.4,
-    selectionPressure: 0.4,
-    fitnessBalance: 0.5,
-    aspectRatioMutationRate: 0.7,
-    boundaryScale: 0.8,
-    autoPlay: false,
-    showAdjacencies: true,
-    showBoundary: true,
-    showPopulation: false,
-  },
-};
-
-export const TopologyFocused: Story = {
-  args: {
-    template: 'house',
-    populationSize: 15,
-    mutationRate: 0.3,
-    mutationStrength: 10,
-    crossoverRate: 0.5,
-    selectionPressure: 0.3,
-    fitnessBalance: 0.8, // Higher = more focus on adjacency distances
     aspectRatioMutationRate: 0.3,
     boundaryScale: 1.0,
     autoPlay: false,

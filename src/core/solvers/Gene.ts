@@ -100,8 +100,12 @@ export class Gene {
     const ratioA = newWidthA / newHeightA;
     const ratioB = newWidthB / newHeightB;
 
-    const validA = ratioA >= roomA.minRatio && ratioA <= roomA.maxRatio;
-    const validB = ratioB >= roomB.minRatio && ratioB <= roomB.maxRatio;
+    // Compute valid range: [1/targetRatio, targetRatio]
+    const minRatioA = 1.0 / roomA.targetRatio;
+    const minRatioB = 1.0 / roomB.targetRatio;
+
+    const validA = ratioA >= minRatioA && ratioA <= roomA.targetRatio;
+    const validB = ratioB >= minRatioB && ratioB <= roomB.targetRatio;
 
     if (validA && validB) {
       // Both can squish - apply the transformation
@@ -141,8 +145,12 @@ export class Gene {
     const ratioA = newWidthA / newHeightA;
     const ratioB = newWidthB / newHeightB;
 
-    const validA = ratioA >= roomA.minRatio && ratioA <= roomA.maxRatio;
-    const validB = ratioB >= roomB.minRatio && ratioB <= roomB.maxRatio;
+    // Compute valid range: [1/targetRatio, targetRatio]
+    const minRatioA = 1.0 / roomA.targetRatio;
+    const minRatioB = 1.0 / roomB.targetRatio;
+
+    const validA = ratioA >= minRatioA && ratioA <= roomA.targetRatio;
+    const validB = ratioB >= minRatioB && ratioB <= roomB.targetRatio;
 
     if (validA && validB) {
       // Both can squish - apply the transformation
@@ -164,24 +172,64 @@ export class Gene {
   }
 
   /**
-   * Push rooms back into the boundary if they're outside
+   * Push rooms back into the boundary if they're outside.
+   * Uses strict polygon containment instead of AABB clamping.
    */
   private constrainToBoundary(boundary: Vec2[]): void {
-    const boundaryAABB = Polygon.calculateAABB(boundary);
+    const MAX_ITERATIONS = 10; // Prevent infinite loops
 
     for (const room of this.rooms) {
-      // Simple AABB containment
-      if (room.x < boundaryAABB.minX) {
-        room.x = boundaryAABB.minX;
-      }
-      if (room.y < boundaryAABB.minY) {
-        room.y = boundaryAABB.minY;
-      }
-      if (room.x + room.width > boundaryAABB.maxX) {
-        room.x = boundaryAABB.maxX - room.width;
-      }
-      if (room.y + room.height > boundaryAABB.maxY) {
-        room.y = boundaryAABB.maxY - room.height;
+      let iteration = 0;
+
+      while (iteration < MAX_ITERATIONS) {
+        // Get all four corners of the room
+        const corners: Vec2[] = [
+          { x: room.x, y: room.y }, // Top-left
+          { x: room.x + room.width, y: room.y }, // Top-right
+          { x: room.x + room.width, y: room.y + room.height }, // Bottom-right
+          { x: room.x, y: room.y + room.height }, // Bottom-left
+        ];
+
+        // Check if all corners are inside the polygon
+        let allInside = true;
+        let farthestOutsideCorner: Vec2 | null = null;
+        let maxDistSq = 0;
+
+        for (const corner of corners) {
+          if (!Polygon.pointInPolygon(corner, boundary)) {
+            allInside = false;
+
+            // Find the farthest outside corner
+            const closestOnBoundary = Polygon.closestPointOnPolygon(corner, boundary);
+            const distSq =
+              (corner.x - closestOnBoundary.x) ** 2 + (corner.y - closestOnBoundary.y) ** 2;
+
+            if (distSq > maxDistSq) {
+              maxDistSq = distSq;
+              farthestOutsideCorner = corner;
+            }
+          }
+        }
+
+        if (allInside) {
+          // All corners are inside, we're done
+          break;
+        }
+
+        // Push the room towards the boundary
+        if (farthestOutsideCorner) {
+          const closestOnBoundary = Polygon.closestPointOnPolygon(farthestOutsideCorner, boundary);
+
+          // Calculate push direction (from outside corner to boundary)
+          const pushX = closestOnBoundary.x - farthestOutsideCorner.x;
+          const pushY = closestOnBoundary.y - farthestOutsideCorner.y;
+
+          // Move room center by push vector (with small overshoot to ensure convergence)
+          room.x += pushX * 1.1;
+          room.y += pushY * 1.1;
+        }
+
+        iteration++;
       }
     }
   }
@@ -289,8 +337,13 @@ export class Gene {
 
       // Aspect ratio mutation (key innovation from original C#)
       if (Math.random() < aspectMutationRate) {
+        // Compute min/max ratio from targetRatio
+        // Valid range: [1/targetRatio, targetRatio]
+        const minRatio = 1.0 / room.targetRatio;
+        const maxRatio = room.targetRatio;
+
         // Random aspect ratio within allowed range
-        const randomRatio = room.minRatio + Math.random() * (room.maxRatio - room.minRatio);
+        const randomRatio = minRatio + Math.random() * (maxRatio - minRatio);
 
         // Calculate new dimensions maintaining area
         room.width = Math.sqrt(room.targetArea * randomRatio);
@@ -321,8 +374,7 @@ export class Gene {
         y: Math.random() < 0.5 ? parentA.y : parentB.y,
         width: Math.random() < 0.5 ? parentA.width : parentB.width,
         height: Math.random() < 0.5 ? parentA.height : parentB.height,
-        minRatio: parentA.minRatio,
-        maxRatio: parentA.maxRatio,
+        targetRatio: parentA.targetRatio,
         targetArea: parentA.targetArea,
       };
 

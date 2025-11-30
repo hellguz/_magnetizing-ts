@@ -25,36 +25,31 @@ const rooms: RoomRequest[] = [
   {
     id: 'entrance',
     targetArea: 60,
-    minRatio: 0.8,
-    maxRatio: 1.2,
+    targetRatio: 1.2, // Valid range: [0.83, 1.2]
     corridorRule: CorridorRule.ALL_SIDES, // Halo on all sides
   },
   {
     id: 'living-room',
     targetArea: 150,
-    minRatio: 1.0,
-    maxRatio: 1.5,
+    targetRatio: 1.5, // Valid range: [0.67, 1.5]
     corridorRule: CorridorRule.TWO_SIDES, // L-shape corridor
   },
   {
     id: 'kitchen',
     targetArea: 100,
-    minRatio: 0.9,
-    maxRatio: 1.3,
+    targetRatio: 1.3, // Valid range: [0.77, 1.3]
     corridorRule: CorridorRule.ONE_SIDE, // Bottom strip only
   },
   {
     id: 'bedroom',
     targetArea: 120,
-    minRatio: 0.8,
-    maxRatio: 1.2,
+    targetRatio: 1.2, // Valid range: [0.83, 1.2]
     corridorRule: CorridorRule.ALL_SIDES,
   },
   {
     id: 'bathroom',
     targetArea: 50,
-    minRatio: 0.7,
-    maxRatio: 1.0,
+    targetRatio: 1.0, // Square only
     corridorRule: CorridorRule.NONE, // No auto-corridors
   },
 ];

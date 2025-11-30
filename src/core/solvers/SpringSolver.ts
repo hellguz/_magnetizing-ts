@@ -39,8 +39,7 @@ export class SpringSolver {
       y: r.y,
       width: r.width,
       height: r.height,
-      minRatio: r.minRatio,
-      maxRatio: r.maxRatio,
+      targetRatio: r.targetRatio,
       targetArea: r.width * r.height, // Preserve initial area
     }));
 
@@ -76,8 +75,7 @@ export class SpringSolver {
       y: r.y,
       width: r.width,
       height: r.height,
-      minRatio: r.minRatio,
-      maxRatio: r.maxRatio,
+      targetRatio: r.targetRatio,
       vx: 0,
       vy: 0,
     }));

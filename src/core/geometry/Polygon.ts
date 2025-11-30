@@ -216,4 +216,59 @@ export class Polygon {
 
     return inside;
   }
+
+  /**
+   * Find the closest point on a polygon's boundary to a given point.
+   * Iterates through all edges and finds the closest point on any edge.
+   */
+  static closestPointOnPolygon(point: Vec2, polygon: Vec2[]): Vec2 {
+    if (polygon.length === 0) {
+      return { x: point.x, y: point.y };
+    }
+
+    let closestPoint: Vec2 = { x: polygon[0].x, y: polygon[0].y };
+    let minDistSq = Infinity;
+
+    // Check all edges
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+
+      // Find closest point on edge segment [a, b]
+      const edge = Polygon.closestPointOnSegment(point, a, b);
+      const distSq = (edge.x - point.x) ** 2 + (edge.y - point.y) ** 2;
+
+      if (distSq < minDistSq) {
+        minDistSq = distSq;
+        closestPoint = edge;
+      }
+    }
+
+    return closestPoint;
+  }
+
+  /**
+   * Find the closest point on a line segment [a, b] to a given point.
+   */
+  private static closestPointOnSegment(point: Vec2, a: Vec2, b: Vec2): Vec2 {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+
+    // Handle degenerate case where a === b
+    if (dx === 0 && dy === 0) {
+      return { x: a.x, y: a.y };
+    }
+
+    // Project point onto line segment
+    // t = ((P - A) · (B - A)) / ||B - A||²
+    const t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy);
+
+    // Clamp t to [0, 1] to stay on segment
+    const tClamped = Math.max(0, Math.min(1, t));
+
+    return {
+      x: a.x + tClamped * dx,
+      y: a.y + tClamped * dy,
+    };
+  }
 }

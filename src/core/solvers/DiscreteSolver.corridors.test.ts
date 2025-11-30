@@ -19,8 +19,7 @@ describe('DiscreteSolver - Corridors & Pruning', () => {
         {
           id: 'room1',
           targetArea: 25,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
           corridorRule: CorridorRule.ONE_SIDE,
         },
       ];
@@ -65,8 +64,7 @@ describe('DiscreteSolver - Corridors & Pruning', () => {
         {
           id: 'room1',
           targetArea: 25,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
           corridorRule: CorridorRule.TWO_SIDES,
         },
       ];
@@ -112,8 +110,7 @@ describe('DiscreteSolver - Corridors & Pruning', () => {
         {
           id: 'room1',
           targetArea: 25,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
           corridorRule: CorridorRule.ALL_SIDES,
         },
       ];
@@ -178,15 +175,13 @@ describe('DiscreteSolver - Corridors & Pruning', () => {
         {
           id: 'roomA',
           targetArea: 16,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
           corridorRule: CorridorRule.ONE_SIDE,
         },
         {
           id: 'roomB',
           targetArea: 16,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
           corridorRule: CorridorRule.NONE,
         },
       ];
@@ -358,15 +353,13 @@ describe('DiscreteSolver - Corridors & Pruning', () => {
         {
           id: 'room1',
           targetArea: 20,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
           corridorRule: CorridorRule.ALL_SIDES,
         },
         {
           id: 'room2',
           targetArea: 20,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
           corridorRule: CorridorRule.ALL_SIDES,
         },
       ];

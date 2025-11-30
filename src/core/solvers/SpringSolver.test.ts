@@ -20,8 +20,7 @@ describe('SpringSolver', () => {
       height: 20,
       vx: 0,
       vy: 0,
-      minRatio: 0.8,
-      maxRatio: 1.2,
+      targetRatio: 1.2,
     },
     {
       id: 'room2',
@@ -31,8 +30,7 @@ describe('SpringSolver', () => {
       height: 20,
       vx: 0,
       vy: 0,
-      minRatio: 0.8,
-      maxRatio: 1.2,
+      targetRatio: 1.2,
     },
   ];
 
@@ -89,8 +87,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 5,
           vy: 5,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -119,8 +116,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 10,
           vy: 10,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -149,8 +145,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 1000,
           vy: 1000,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -178,8 +173,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 0,
           vy: 0,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
         {
           id: 'B',
@@ -189,8 +183,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 0,
           vy: 0,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -230,8 +223,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 0,
           vy: 0,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
         {
           id: 'B',
@@ -241,8 +233,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 0,
           vy: 0,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -281,8 +272,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 0,
           vy: 0,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -312,8 +302,7 @@ describe('SpringSolver', () => {
           height: 30, // Ratio = 0.33, below minRatio
           vx: 0,
           vy: 0,
-          minRatio: 0.8,
-          maxRatio: 1.2,
+          targetRatio: 1.2,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -347,8 +336,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 0.05,
           vy: 0.05,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -368,8 +356,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 10,
           vy: 10,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -391,8 +378,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 3,
           vy: 4,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();
@@ -414,8 +400,7 @@ describe('SpringSolver', () => {
           height: 20,
           vx: 10,
           vy: 10,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const boundary = createSimpleBoundary();

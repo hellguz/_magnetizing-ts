@@ -34,8 +34,7 @@ export interface SpringConfig {
 export interface RoomRequest {
   id: string;
   targetArea: number;
-  minRatio: number;
-  maxRatio: number;
+  targetRatio: number; // Max aspect ratio (W/H). Valid range: [1/targetRatio, targetRatio]. Best: 1.0 (square)
   isHall?: boolean;
   /**
    * Defines automatic corridor generation rule.
@@ -58,8 +57,7 @@ export interface RoomState {
   height: number;
   vx: number; // Velocity X
   vy: number; // Velocity Y
-  minRatio: number;
-  maxRatio: number;
+  targetRatio: number; // Max aspect ratio (W/H). Valid range: [1/targetRatio, targetRatio]
 }
 
 // Room state for Evolutionary Strategy (no velocity fields)
@@ -69,7 +67,6 @@ export interface RoomStateES {
   y: number;
   width: number;
   height: number;
-  minRatio: number;
-  maxRatio: number;
+  targetRatio: number; // Max aspect ratio (W/H). Valid range: [1/targetRatio, targetRatio]
   targetArea: number; // Store target area for mutations
 }

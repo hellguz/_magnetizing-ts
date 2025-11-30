@@ -25,26 +25,22 @@ const rooms: RoomRequest[] = [
   {
     id: 'living-room',
     targetArea: 200,
-    minRatio: 1.0,
-    maxRatio: 1.5,
+    targetRatio: 1.5, // Valid range: [1/1.5, 1.5] = [0.67, 1.5]
   },
   {
     id: 'kitchen',
     targetArea: 120,
-    minRatio: 0.8,
-    maxRatio: 1.2,
+    targetRatio: 1.2, // Valid range: [1/1.2, 1.2] = [0.83, 1.2]
   },
   {
     id: 'bedroom',
     targetArea: 150,
-    minRatio: 0.9,
-    maxRatio: 1.3,
+    targetRatio: 1.3, // Valid range: [1/1.3, 1.3] = [0.77, 1.3]
   },
   {
     id: 'bathroom',
     targetArea: 60,
-    minRatio: 0.7,
-    maxRatio: 1.0,
+    targetRatio: 1.0, // Valid range: [1.0, 1.0] = square only
   },
 ];
 
@@ -91,8 +87,7 @@ const roomStates: RoomState[] = Array.from(placedRooms.values()).map(room => ({
   height: room.height,
   vx: 0,
   vy: 0,
-  minRatio: rooms.find(r => r.id === room.id)?.minRatio ?? 1.0,
-  maxRatio: rooms.find(r => r.id === room.id)?.maxRatio ?? 1.0,
+  targetRatio: rooms.find(r => r.id === room.id)?.targetRatio ?? 1.0,
 }));
 
 // 7. Configure spring solver

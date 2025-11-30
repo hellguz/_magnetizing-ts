@@ -397,8 +397,11 @@ export class DiscreteSolver {
    * Find best placement for a room
    */
   private findBestPlacement(room: RoomRequest): PlacementCandidate | null {
-    // Calculate target dimensions
-    const ratio = this.rng.nextFloat(room.minRatio, room.maxRatio);
+    // Calculate target dimensions using targetRatio
+    // Valid range: [1/targetRatio, targetRatio]
+    const minRatio = 1.0 / room.targetRatio;
+    const maxRatio = room.targetRatio;
+    const ratio = this.rng.nextFloat(minRatio, maxRatio);
     const width = Math.ceil(Math.sqrt(room.targetArea / ratio) / this.config.gridResolution);
     const height = Math.ceil((room.targetArea / (width * this.config.gridResolution)) / this.config.gridResolution);
     const corridorRule = room.corridorRule || 0;

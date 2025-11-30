@@ -15,20 +15,17 @@ describe('DiscreteSolver', () => {
     {
       id: 'room1',
       targetArea: 25,
-      minRatio: 0.8,
-      maxRatio: 1.2,
+      targetRatio: 1.2,
     },
     {
       id: 'room2',
       targetArea: 30,
-      minRatio: 0.8,
-      maxRatio: 1.2,
+      targetRatio: 1.2,
     },
     {
       id: 'room3',
       targetArea: 20,
-      minRatio: 0.8,
-      maxRatio: 1.2,
+      targetRatio: 1.2,
     },
   ];
 
@@ -138,8 +135,7 @@ describe('DiscreteSolver', () => {
         {
           id: 'only-room',
           targetArea: 50,
-          minRatio: 1.0,
-          maxRatio: 1.0,
+          targetRatio: 1.0,
         },
       ];
       const adjacencies: Adjacency[] = [];
@@ -167,8 +163,8 @@ describe('DiscreteSolver', () => {
       ];
 
       const rooms: RoomRequest[] = [
-        { id: 'A', targetArea: 50, minRatio: 1.0, maxRatio: 1.0 },
-        { id: 'B', targetArea: 50, minRatio: 1.0, maxRatio: 1.0 },
+        { id: 'A', targetArea: 50, targetRatio: 1.0 },
+        { id: 'B', targetArea: 50, targetRatio: 1.0 },
       ];
 
       const adjacencies: Adjacency[] = [

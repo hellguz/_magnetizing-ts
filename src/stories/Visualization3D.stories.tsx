@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Canvas } from '@react-three/fiber';
 import { SceneContainer } from '../visualization/SceneContainer.js';
 import { DiscreteGrid3D } from '../visualization/DiscreteGrid3D.js';
+import { DiscreteGridOverlay } from '../visualization/DiscreteGridOverlay.js';
 import { SpringSystem3D } from '../visualization/SpringSystem3D.js';
 import { DiscreteSolver } from '../core/solvers/DiscreteSolver.js';
 import { SpringSolver } from '../core/solvers/SpringSolver.js';
@@ -32,6 +33,9 @@ interface DiscreteVisualizationArgs {
   maxIterations: number;
   cellSize: number;
   boundaryScale: number;
+  showAdjacencies: boolean;
+  showBoundary: boolean;
+  showStartPoint: boolean;
 }
 
 interface SpringVisualizationArgs {
@@ -59,10 +63,10 @@ const discreteTemplates: Record<TemplateType, DiscreteTemplate> = {
       { x: 0, y: 40 },
     ],
     rooms: [
-      { id: 'living', targetArea: 200, minRatio: 1.0, maxRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'kitchen', targetArea: 120, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'bedroom', targetArea: 150, minRatio: 0.9, maxRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'bathroom', targetArea: 60, minRatio: 0.7, maxRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'living', targetArea: 200, targetRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'kitchen', targetArea: 120, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bedroom', targetArea: 150, targetRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'bathroom', targetArea: 60, targetRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
     ],
     adjacencies: [
       { a: 'living', b: 'kitchen', weight: 2.0 },
@@ -79,12 +83,12 @@ const discreteTemplates: Record<TemplateType, DiscreteTemplate> = {
       { x: 0, y: 50 },
     ],
     rooms: [
-      { id: 'reception', targetArea: 180, minRatio: 1.2, maxRatio: 1.8, corridorRule: CorridorRule.ALL_SIDES },
-      { id: 'office-1', targetArea: 140, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'office-2', targetArea: 140, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'office-3', targetArea: 140, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'meeting', targetArea: 200, minRatio: 1.0, maxRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'restroom', targetArea: 80, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'reception', targetArea: 180, targetRatio: 1.8, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'office-1', targetArea: 140, targetRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'office-2', targetArea: 140, targetRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'office-3', targetArea: 140, targetRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'meeting', targetArea: 200, targetRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'restroom', targetArea: 80, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
     ],
     adjacencies: [
       { a: 'reception', b: 'office-1', weight: 1.5 },
@@ -103,14 +107,14 @@ const discreteTemplates: Record<TemplateType, DiscreteTemplate> = {
       { x: 0, y: 60 },
     ],
     rooms: [
-      { id: 'entry', targetArea: 100, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ALL_SIDES },
-      { id: 'living', targetArea: 300, minRatio: 1.2, maxRatio: 1.6, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'dining', targetArea: 180, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'kitchen', targetArea: 200, minRatio: 0.9, maxRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'bedroom-1', targetArea: 200, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'bedroom-2', targetArea: 180, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'bath-1', targetArea: 80, minRatio: 0.7, maxRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'bath-2', targetArea: 60, minRatio: 0.7, maxRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'entry', targetArea: 100, targetRatio: 1.2, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'living', targetArea: 300, targetRatio: 1.6, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'dining', targetArea: 180, targetRatio: 1.4, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'kitchen', targetArea: 200, targetRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'bedroom-1', targetArea: 200, targetRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bedroom-2', targetArea: 180, targetRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bath-1', targetArea: 80, targetRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bath-2', targetArea: 60, targetRatio: 1.0, corridorRule: CorridorRule.ONE_SIDE },
     ],
     adjacencies: [
       { a: 'entry', b: 'living', weight: 2.5 },
@@ -131,11 +135,11 @@ const discreteTemplates: Record<TemplateType, DiscreteTemplate> = {
       { x: 0, y: 40 },
     ],
     rooms: [
-      { id: 'lobby', targetArea: 250, minRatio: 1.5, maxRatio: 2.0, corridorRule: CorridorRule.ALL_SIDES },
-      { id: 'gallery-a', targetArea: 300, minRatio: 1.2, maxRatio: 1.8, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'gallery-b', targetArea: 300, minRatio: 1.2, maxRatio: 1.8, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'gallery-c', targetArea: 250, minRatio: 1.0, maxRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'storage', targetArea: 120, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'lobby', targetArea: 250, targetRatio: 2.0, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'gallery-a', targetArea: 300, targetRatio: 1.8, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'gallery-b', targetArea: 300, targetRatio: 1.8, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'gallery-c', targetArea: 250, targetRatio: 1.5, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'storage', targetArea: 120, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
     ],
     adjacencies: [
       { a: 'lobby', b: 'gallery-a', weight: 2.0 },
@@ -155,13 +159,13 @@ const discreteTemplates: Record<TemplateType, DiscreteTemplate> = {
       { x: 0, y: 45 },
     ],
     rooms: [
-      { id: 'waiting', targetArea: 200, minRatio: 1.3, maxRatio: 1.7, corridorRule: CorridorRule.ALL_SIDES },
-      { id: 'reception', targetArea: 100, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'exam-1', targetArea: 120, minRatio: 0.9, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'exam-2', targetArea: 120, minRatio: 0.9, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'exam-3', targetArea: 120, minRatio: 0.9, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'lab', targetArea: 150, minRatio: 1.0, maxRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'staff', targetArea: 90, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'waiting', targetArea: 200, targetRatio: 1.7, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'reception', targetArea: 100, targetRatio: 1.4, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'exam-1', targetArea: 120, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'exam-2', targetArea: 120, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'exam-3', targetArea: 120, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'lab', targetArea: 150, targetRatio: 1.3, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'staff', targetArea: 90, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
     ],
     adjacencies: [
       { a: 'waiting', b: 'reception', weight: 2.5 },
@@ -182,13 +186,13 @@ const discreteTemplates: Record<TemplateType, DiscreteTemplate> = {
       { x: 0, y: 55 },
     ],
     rooms: [
-      { id: 'entrance', targetArea: 80, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ALL_SIDES },
-      { id: 'dining-main', targetArea: 400, minRatio: 1.3, maxRatio: 1.7, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'dining-private', targetArea: 150, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'bar', targetArea: 180, minRatio: 1.5, maxRatio: 2.0, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'kitchen', targetArea: 250, minRatio: 1.0, maxRatio: 1.4, corridorRule: CorridorRule.TWO_SIDES },
-      { id: 'storage', targetArea: 100, minRatio: 0.8, maxRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
-      { id: 'restrooms', targetArea: 120, minRatio: 0.9, maxRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'entrance', targetArea: 80, targetRatio: 1.2, corridorRule: CorridorRule.ALL_SIDES },
+      { id: 'dining-main', targetArea: 400, targetRatio: 1.7, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'dining-private', targetArea: 150, targetRatio: 1.4, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'bar', targetArea: 180, targetRatio: 2.0, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'kitchen', targetArea: 250, targetRatio: 1.4, corridorRule: CorridorRule.TWO_SIDES },
+      { id: 'storage', targetArea: 100, targetRatio: 1.2, corridorRule: CorridorRule.ONE_SIDE },
+      { id: 'restrooms', targetArea: 120, targetRatio: 1.3, corridorRule: CorridorRule.ONE_SIDE },
     ],
     adjacencies: [
       { a: 'entrance', b: 'dining-main', weight: 2.5 },
@@ -212,10 +216,10 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
       { x: 50, y: 450 },
     ],
     rooms: [
-      { id: 'living', x: 100, y: 100, width: 150, height: 120, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.5 },
-      { id: 'kitchen', x: 300, y: 100, width: 110, height: 100, vx: 0, vy: 0, minRatio: 0.8, maxRatio: 1.2 },
-      { id: 'bedroom', x: 100, y: 280, width: 120, height: 110, vx: 0, vy: 0, minRatio: 0.9, maxRatio: 1.3 },
-      { id: 'bathroom', x: 350, y: 300, width: 80, height: 70, vx: 0, vy: 0, minRatio: 0.7, maxRatio: 1.0 },
+      { id: 'living', x: 100, y: 100, width: 150, height: 120, vx: 0, vy: 0, targetRatio: 1.5 },
+      { id: 'kitchen', x: 300, y: 100, width: 110, height: 100, vx: 0, vy: 0, targetRatio: 1.2 },
+      { id: 'bedroom', x: 100, y: 280, width: 120, height: 110, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bathroom', x: 350, y: 300, width: 80, height: 70, vx: 0, vy: 0, targetRatio: 1.0 },
     ],
     adjacencies: [
       { a: 'living', b: 'kitchen', weight: 2.0 },
@@ -231,12 +235,12 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
       { x: 50, y: 550 },
     ],
     rooms: [
-      { id: 'reception', x: 100, y: 80, width: 180, height: 140, vx: 0, vy: 0, minRatio: 1.2, maxRatio: 1.8 },
-      { id: 'office-1', x: 350, y: 100, width: 120, height: 100, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.3 },
-      { id: 'office-2', x: 500, y: 100, width: 120, height: 100, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.3 },
-      { id: 'office-3', x: 350, y: 250, width: 120, height: 100, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.3 },
-      { id: 'meeting', x: 100, y: 300, width: 200, height: 140, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.5 },
-      { id: 'restroom', x: 500, y: 400, width: 100, height: 80, vx: 0, vy: 0, minRatio: 0.8, maxRatio: 1.2 },
+      { id: 'reception', x: 100, y: 80, width: 180, height: 140, vx: 0, vy: 0, targetRatio: 1.8 },
+      { id: 'office-1', x: 350, y: 100, width: 120, height: 100, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'office-2', x: 500, y: 100, width: 120, height: 100, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'office-3', x: 350, y: 250, width: 120, height: 100, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'meeting', x: 100, y: 300, width: 200, height: 140, vx: 0, vy: 0, targetRatio: 1.5 },
+      { id: 'restroom', x: 500, y: 400, width: 100, height: 80, vx: 0, vy: 0, targetRatio: 1.2 },
     ],
     adjacencies: [
       { a: 'reception', b: 'office-1', weight: 1.5 },
@@ -254,14 +258,14 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
       { x: 30, y: 630 },
     ],
     rooms: [
-      { id: 'entry', x: 80, y: 80, width: 100, height: 90, vx: 0, vy: 0, minRatio: 0.2, maxRatio: 5.0 },
-      { id: 'living', x: 250, y: 100, width: 200, height: 150, vx: 0, vy: 0, minRatio: 1.2, maxRatio: 1.6 },
-      { id: 'dining', x: 500, y: 100, width: 150, height: 120, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.4 },
-      { id: 'kitchen', x: 500, y: 300, width: 150, height: 130, vx: 0, vy: 0, minRatio: 0.9, maxRatio: 1.3 },
-      { id: 'bedroom-1', x: 100, y: 350, width: 140, height: 120, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.3 },
-      { id: 'bedroom-2', x: 300, y: 350, width: 130, height: 110, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.3 },
-      { id: 'bath-1', x: 150, y: 500, width: 90, height: 80, vx: 0, vy: 0, minRatio: 0.2, maxRatio: 5 },
-      { id: 'bath-2', x: 350, y: 500, width: 80, height: 70, vx: 0, vy: 0, minRatio: 0.2, maxRatio: 5 },
+      { id: 'entry', x: 80, y: 80, width: 100, height: 90, vx: 0, vy: 0, targetRatio: 5.0 },
+      { id: 'living', x: 250, y: 100, width: 200, height: 150, vx: 0, vy: 0, targetRatio: 1.6 },
+      { id: 'dining', x: 500, y: 100, width: 150, height: 120, vx: 0, vy: 0, targetRatio: 1.4 },
+      { id: 'kitchen', x: 500, y: 300, width: 150, height: 130, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bedroom-1', x: 100, y: 350, width: 140, height: 120, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bedroom-2', x: 300, y: 350, width: 130, height: 110, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bath-1', x: 150, y: 500, width: 90, height: 80, vx: 0, vy: 0, targetRatio: 5 },
+      { id: 'bath-2', x: 350, y: 500, width: 80, height: 70, vx: 0, vy: 0, targetRatio: 5 },
     ],
     adjacencies: [
       { a: 'entry', b: 'living', weight: 2.5 },
@@ -281,11 +285,11 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
       { x: 30, y: 450 },
     ],
     rooms: [
-      { id: 'lobby', x: 100, y: 100, width: 200, height: 120, vx: 0, vy: 0, minRatio: 1.5, maxRatio: 2.0 },
-      { id: 'gallery-a', x: 350, y: 80, width: 180, height: 140, vx: 0, vy: 0, minRatio: 1.2, maxRatio: 1.8 },
-      { id: 'gallery-b', x: 550, y: 80, width: 180, height: 140, vx: 0, vy: 0, minRatio: 1.2, maxRatio: 1.8 },
-      { id: 'gallery-c', x: 450, y: 280, width: 170, height: 130, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.5 },
-      { id: 'storage', x: 100, y: 300, width: 110, height: 90, vx: 0, vy: 0, minRatio: 0.8, maxRatio: 1.2 },
+      { id: 'lobby', x: 100, y: 100, width: 200, height: 120, vx: 0, vy: 0, targetRatio: 2.0 },
+      { id: 'gallery-a', x: 350, y: 80, width: 180, height: 140, vx: 0, vy: 0, targetRatio: 1.8 },
+      { id: 'gallery-b', x: 550, y: 80, width: 180, height: 140, vx: 0, vy: 0, targetRatio: 1.8 },
+      { id: 'gallery-c', x: 450, y: 280, width: 170, height: 130, vx: 0, vy: 0, targetRatio: 1.5 },
+      { id: 'storage', x: 100, y: 300, width: 110, height: 90, vx: 0, vy: 0, targetRatio: 1.2 },
     ],
     adjacencies: [
       { a: 'lobby', b: 'gallery-a', weight: 2.0 },
@@ -304,13 +308,13 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
       { x: 50, y: 500 },
     ],
     rooms: [
-      { id: 'waiting', x: 100, y: 80, width: 160, height: 120, vx: 0, vy: 0, minRatio: 1.3, maxRatio: 1.7 },
-      { id: 'reception', x: 300, y: 80, width: 120, height: 90, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.4 },
-      { id: 'exam-1', x: 450, y: 80, width: 110, height: 100, vx: 0, vy: 0, minRatio: 0.9, maxRatio: 1.2 },
-      { id: 'exam-2', x: 450, y: 220, width: 110, height: 100, vx: 0, vy: 0, minRatio: 0.9, maxRatio: 1.2 },
-      { id: 'exam-3', x: 450, y: 350, width: 110, height: 100, vx: 0, vy: 0, minRatio: 0.9, maxRatio: 1.2 },
-      { id: 'lab', x: 100, y: 280, width: 130, height: 110, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.3 },
-      { id: 'staff', x: 280, y: 350, width: 100, height: 80, vx: 0, vy: 0, minRatio: 0.8, maxRatio: 1.2 },
+      { id: 'waiting', x: 100, y: 80, width: 160, height: 120, vx: 0, vy: 0, targetRatio: 1.7 },
+      { id: 'reception', x: 300, y: 80, width: 120, height: 90, vx: 0, vy: 0, targetRatio: 1.4 },
+      { id: 'exam-1', x: 450, y: 80, width: 110, height: 100, vx: 0, vy: 0, targetRatio: 1.2 },
+      { id: 'exam-2', x: 450, y: 220, width: 110, height: 100, vx: 0, vy: 0, targetRatio: 1.2 },
+      { id: 'exam-3', x: 450, y: 350, width: 110, height: 100, vx: 0, vy: 0, targetRatio: 1.2 },
+      { id: 'lab', x: 100, y: 280, width: 130, height: 110, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'staff', x: 280, y: 350, width: 100, height: 80, vx: 0, vy: 0, targetRatio: 1.2 },
     ],
     adjacencies: [
       { a: 'waiting', b: 'reception', weight: 2.5 },
@@ -330,13 +334,13 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
       { x: 30, y: 580 },
     ],
     rooms: [
-      { id: 'entrance', x: 80, y: 80, width: 90, height: 80, vx: 0, vy: 0, minRatio: 0.8, maxRatio: 1.2 },
-      { id: 'dining-main', x: 250, y: 100, width: 220, height: 160, vx: 0, vy: 0, minRatio: 1.3, maxRatio: 1.7 },
-      { id: 'dining-private', x: 500, y: 120, width: 140, height: 110, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.4 },
-      { id: 'bar', x: 100, y: 300, width: 170, height: 100, vx: 0, vy: 0, minRatio: 1.5, maxRatio: 2.0 },
-      { id: 'kitchen', x: 350, y: 320, width: 180, height: 130, vx: 0, vy: 0, minRatio: 1.0, maxRatio: 1.4 },
-      { id: 'storage', x: 550, y: 350, width: 100, height: 90, vx: 0, vy: 0, minRatio: 0.8, maxRatio: 1.2 },
-      { id: 'restrooms', x: 100, y: 450, width: 120, height: 100, vx: 0, vy: 0, minRatio: 0.9, maxRatio: 1.3 },
+      { id: 'entrance', x: 80, y: 80, width: 90, height: 80, vx: 0, vy: 0, targetRatio: 1.2 },
+      { id: 'dining-main', x: 250, y: 100, width: 220, height: 160, vx: 0, vy: 0, targetRatio: 1.7 },
+      { id: 'dining-private', x: 500, y: 120, width: 140, height: 110, vx: 0, vy: 0, targetRatio: 1.4 },
+      { id: 'bar', x: 100, y: 300, width: 170, height: 100, vx: 0, vy: 0, targetRatio: 2.0 },
+      { id: 'kitchen', x: 350, y: 320, width: 180, height: 130, vx: 0, vy: 0, targetRatio: 1.4 },
+      { id: 'storage', x: 550, y: 350, width: 100, height: 90, vx: 0, vy: 0, targetRatio: 1.2 },
+      { id: 'restrooms', x: 100, y: 450, width: 120, height: 100, vx: 0, vy: 0, targetRatio: 1.3 },
     ],
     adjacencies: [
       { a: 'entrance', b: 'dining-main', weight: 2.5 },
@@ -354,10 +358,13 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
 const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) => {
   const [version, setVersion] = useState(0);
   const solverRef = useRef<DiscreteSolver | null>(null);
+  const scaledBoundaryRef = useRef<Point[]>([]);
+  const templateRef = useRef<DiscreteTemplate | null>(null);
 
   // Only recreate solver when template or config changes
   useMemo(() => {
     const template = discreteTemplates[args.template];
+    templateRef.current = template;
     const { rooms, adjacencies, startPoint, boundary: templateBoundary } = template;
 
     // Apply boundary scaling
@@ -365,6 +372,7 @@ const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) 
       x: startPoint.x + (p.x - startPoint.x) * args.boundaryScale,
       y: startPoint.y + (p.y - startPoint.y) * args.boundaryScale
     }));
+    scaledBoundaryRef.current = boundary;
 
     solverRef.current = new DiscreteSolver(
       boundary,
@@ -397,14 +405,26 @@ const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) 
   }, []);
 
   const grid = solverRef.current?.getGrid();
+  const placedRooms = solverRef.current?.getPlacedRooms();
+  const template = templateRef.current;
 
-  if (!grid) return null;
+  if (!grid || !template) return null;
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <Canvas>
         <SceneContainer zoom={20}>
           <DiscreteGrid3D grid={grid} cellSize={args.cellSize} />
+          <DiscreteGridOverlay
+            boundary={scaledBoundaryRef.current}
+            adjacencies={template.adjacencies}
+            placedRooms={placedRooms}
+            startPoint={template.startPoint}
+            cellSize={args.cellSize}
+            showBoundary={args.showBoundary}
+            showAdjacencies={args.showAdjacencies}
+            showStartPoint={args.showStartPoint}
+          />
         </SceneContainer>
       </Canvas>
 
@@ -620,6 +640,18 @@ const discreteMeta: Meta<DiscreteVisualizationArgs> = {
       control: { type: 'range', min: 0.1, max: 1.0, step: 0.05 },
       description: 'Scale boundary towards entrance point',
     },
+    showAdjacencies: {
+      control: { type: 'boolean' },
+      description: 'Show adjacency connections between rooms',
+    },
+    showBoundary: {
+      control: { type: 'boolean' },
+      description: 'Show boundary (red dashed line)',
+    },
+    showStartPoint: {
+      control: { type: 'boolean' },
+      description: 'Show start point (entrance) marker',
+    },
   },
   parameters: {
     layout: 'fullscreen',
@@ -699,6 +731,9 @@ export const DiscreteSolver3D: DiscreteStory = {
     maxIterations: 100,
     cellSize: 12,
     boundaryScale: 1.0,
+    showAdjacencies: true,
+    showBoundary: true,
+    showStartPoint: true,
   },
 };
 

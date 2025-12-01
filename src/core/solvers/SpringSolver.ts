@@ -25,13 +25,16 @@ export class SpringSolver {
   private geneCollection: GeneCollection;
   private config: SpringConfig;
   private currentGeneration: number = 0;
+  private globalTargetRatio: number | undefined;
 
   constructor(
     rooms: RoomState[],
     boundary: Vec2[],
     adjacencies: Adjacency[],
-    config: Partial<SpringConfig> = {}
+    config: Partial<SpringConfig> = {},
+    globalTargetRatio?: number
   ) {
+    this.globalTargetRatio = globalTargetRatio;
     // Convert RoomState to RoomStateES (remove velocity fields)
     const roomsES: RoomStateES[] = rooms.map(r => ({
       id: r.id,
@@ -58,7 +61,8 @@ export class SpringSolver {
       roomsES,
       boundary,
       adjacencies,
-      this.config
+      this.config,
+      this.globalTargetRatio
     );
   }
 

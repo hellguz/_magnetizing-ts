@@ -12,7 +12,7 @@ interface SceneContainerProps {
  */
 export const SceneContainer: React.FC<SceneContainerProps> = ({
   children,
-  zoom = 20
+  zoom = 200
 }) => {
   return (
     <>

@@ -5,6 +5,7 @@ import { SceneContainer } from '../visualization/SceneContainer.js';
 import { DiscreteGrid3D } from '../visualization/DiscreteGrid3D.js';
 import { DiscreteGridOverlay } from '../visualization/DiscreteGridOverlay.js';
 import { SpringSystem3D } from '../visualization/SpringSystem3D.js';
+import { BoundaryEditor } from '../visualization/BoundaryEditor.js';
 import { DiscreteSolver } from '../core/solvers/DiscreteSolver.js';
 import { SpringSolver } from '../core/solvers/SpringSolver.js';
 import { Point } from '../core/grid/GridBuffer.js';
@@ -36,6 +37,7 @@ interface DiscreteVisualizationArgs {
   showAdjacencies: boolean;
   showBoundary: boolean;
   showStartPoint: boolean;
+  editBoundary: boolean;
 }
 
 interface SpringVisualizationArgs {
@@ -48,9 +50,11 @@ interface SpringVisualizationArgs {
   fitnessBalance: number;
   aspectRatioMutationRate: number;
   boundaryScale: number;
+  globalTargetRatio: number | undefined;
   autoPlay: boolean;
   showAdjacencies: boolean;
   showBoundary: boolean;
+  editBoundary: boolean;
 }
 
 // Template configurations (reused from existing stories)
@@ -360,6 +364,7 @@ const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) 
   const solverRef = useRef<DiscreteSolver | null>(null);
   const scaledBoundaryRef = useRef<Point[]>([]);
   const templateRef = useRef<DiscreteTemplate | null>(null);
+  const [editableBoundary, setEditableBoundary] = useState<Vec2[]>([]);
 
   // Only recreate solver when template or config changes
   useMemo(() => {
@@ -373,6 +378,7 @@ const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) 
       y: startPoint.y + (p.y - startPoint.y) * args.boundaryScale
     }));
     scaledBoundaryRef.current = boundary;
+    setEditableBoundary(boundary);
 
     solverRef.current = new DiscreteSolver(
       boundary,
@@ -396,6 +402,39 @@ const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) 
     solverRef.current.solve();
     setVersion((v) => v + 1);
   }, [args.template, args.gridResolution, args.maxIterations, args.mutationRate, args.boundaryScale]);
+
+  // Handle boundary changes from editor
+  const handleBoundaryChange = useCallback((newPoints: Vec2[]) => {
+    setEditableBoundary(newPoints);
+    scaledBoundaryRef.current = newPoints as Point[];
+
+    const template = templateRef.current;
+    if (!template) return;
+
+    const { rooms, adjacencies, startPoint } = template;
+
+    // Recreate solver with new boundary
+    solverRef.current = new DiscreteSolver(
+      newPoints as Point[],
+      rooms,
+      adjacencies,
+      {
+        gridResolution: args.gridResolution,
+        maxIterations: args.maxIterations,
+        mutationRate: args.mutationRate,
+        startPoint,
+        weights: {
+          compactness: 2.0,
+          adjacency: 3.0,
+          corridor: 0.5,
+        },
+      },
+      42
+    );
+
+    solverRef.current.solve();
+    setVersion((v) => v + 1);
+  }, [args.gridResolution, args.maxIterations, args.mutationRate]);
 
   const handleStep = useCallback(() => {
     if (solverRef.current) {
@@ -421,10 +460,17 @@ const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) 
             placedRooms={placedRooms}
             startPoint={template.startPoint}
             cellSize={args.cellSize}
-            showBoundary={args.showBoundary}
+            showBoundary={!args.editBoundary && args.showBoundary}
             showAdjacencies={args.showAdjacencies}
             showStartPoint={args.showStartPoint}
           />
+          {args.editBoundary && (
+            <BoundaryEditor
+              points={editableBoundary}
+              onChange={handleBoundaryChange}
+              editable={true}
+            />
+          )}
         </SceneContainer>
       </Canvas>
 
@@ -491,6 +537,8 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
   const solverRef = useRef<SpringSolver | null>(null);
   const scaledBoundaryRef = useRef<Vec2[]>([]);
   const animationIdRef = useRef<number | null>(null);
+  const templateRef = useRef<SpringTemplate | null>(null);
+  const [editableBoundary, setEditableBoundary] = useState<Vec2[]>([]);
 
   // Helper: Calculate centroid of a polygon
   const calculateCentroid = useCallback((points: Vec2[]) => {
@@ -505,6 +553,7 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
   // Only recreate solver when template or config changes
   useMemo(() => {
     const template = springTemplates[args.template];
+    templateRef.current = template;
     const { rooms, boundary: templateBoundary, adjacencies } = template;
 
     // Apply boundary scaling towards centroid
@@ -515,6 +564,7 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
     }));
 
     scaledBoundaryRef.current = boundary;
+    setEditableBoundary(boundary);
 
     solverRef.current = new SpringSolver(rooms, boundary, adjacencies, {
       populationSize: args.populationSize,
@@ -525,10 +575,35 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
       selectionPressure: args.selectionPressure,
       fitnessBalance: args.fitnessBalance,
       aspectRatioMutationRate: args.aspectRatioMutationRate,
-    });
+    }, args.globalTargetRatio);
 
     setVersion((v) => v + 1);
-  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.boundaryScale, calculateCentroid]);
+  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.boundaryScale, args.globalTargetRatio, calculateCentroid]);
+
+  // Handle boundary changes from editor
+  const handleBoundaryChange = useCallback((newPoints: Vec2[]) => {
+    setEditableBoundary(newPoints);
+    scaledBoundaryRef.current = newPoints;
+
+    const template = templateRef.current;
+    if (!template) return;
+
+    const { rooms, adjacencies } = template;
+
+    // Recreate solver with new boundary
+    solverRef.current = new SpringSolver(rooms, newPoints, adjacencies, {
+      populationSize: args.populationSize,
+      maxGenerations: 1000,
+      mutationRate: args.mutationRate,
+      mutationStrength: args.mutationStrength,
+      crossoverRate: args.crossoverRate,
+      selectionPressure: args.selectionPressure,
+      fitnessBalance: args.fitnessBalance,
+      aspectRatioMutationRate: args.aspectRatioMutationRate,
+    }, args.globalTargetRatio);
+
+    setVersion((v) => v + 1);
+  }, [args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio]);
 
   // Animation loop controlled by autoPlay prop
   React.useEffect(() => {
@@ -569,8 +644,15 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
             adjacencies={adjacencies}
             boundary={scaledBoundaryRef.current}
             showAdjacencies={args.showAdjacencies}
-            showBoundary={args.showBoundary}
+            showBoundary={!args.editBoundary && args.showBoundary}
           />
+          {args.editBoundary && (
+            <BoundaryEditor
+              points={editableBoundary}
+              onChange={handleBoundaryChange}
+              editable={true}
+            />
+          )}
         </SceneContainer>
       </Canvas>
 
@@ -652,6 +734,10 @@ const discreteMeta: Meta<DiscreteVisualizationArgs> = {
       control: { type: 'boolean' },
       description: 'Show start point (entrance) marker',
     },
+    editBoundary: {
+      control: { type: 'boolean' },
+      description: 'Enable interactive boundary editing (drag vertices, click midpoints to add)',
+    },
   },
   parameters: {
     layout: 'fullscreen',
@@ -700,6 +786,10 @@ const springMeta: Meta<SpringVisualizationArgs> = {
       control: { type: 'range', min: 0.1, max: 1.0, step: 0.05 },
       description: 'Scale boundary towards centroid',
     },
+    globalTargetRatio: {
+      control: { type: 'range', min: 1.0, max: 5.0, step: 0.1 },
+      description: 'Global aspect ratio override for all rooms (undefined = use individual ratios)',
+    },
     autoPlay: {
       control: { type: 'boolean' },
       description: 'Automatically run the solver animation',
@@ -711,6 +801,10 @@ const springMeta: Meta<SpringVisualizationArgs> = {
     showBoundary: {
       control: { type: 'boolean' },
       description: 'Show boundary (red dashed line)',
+    },
+    editBoundary: {
+      control: { type: 'boolean' },
+      description: 'Enable interactive boundary editing (drag vertices, click midpoints to add)',
     },
   },
   parameters: {
@@ -734,6 +828,7 @@ export const DiscreteSolver3D: DiscreteStory = {
     showAdjacencies: true,
     showBoundary: true,
     showStartPoint: true,
+    editBoundary: false,
   },
 };
 
@@ -748,9 +843,11 @@ export const SpringSolver3D: SpringStory = {
     fitnessBalance: 0.5,
     aspectRatioMutationRate: 0.3,
     boundaryScale: 1.0,
+    globalTargetRatio: undefined,
     autoPlay: true,
     showAdjacencies: true,
     showBoundary: true,
+    editBoundary: false,
   },
   render: (args) => <SpringSolverVisualization {...args} />,
 };

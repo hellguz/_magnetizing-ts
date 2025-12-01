@@ -37,7 +37,7 @@ export class Gene {
    * 2. For each overlap, attempt to SCALE (squish) dimensions to resolve
    * 3. If scaling violates aspect ratio constraints, TRANSLATE (move) instead
    */
-  applySquishCollisions(boundary: Vec2[]): void {
+  applySquishCollisions(boundary: Vec2[], globalTargetRatio?: number): void {
     const n = this.rooms.length;
 
     for (let i = 0; i < n; i++) {
@@ -68,10 +68,10 @@ export class Gene {
           // Try to squish along the smaller overlap dimension
           if (overlapX < overlapY) {
             // Overlap is more horizontal, try to squish widths
-            this.trySquishHorizontal(roomA, roomB, overlapX);
+            this.trySquishHorizontal(roomA, roomB, overlapX, globalTargetRatio);
           } else {
             // Overlap is more vertical, try to squish heights
-            this.trySquishVertical(roomA, roomB, overlapY);
+            this.trySquishVertical(roomA, roomB, overlapY, globalTargetRatio);
           }
         }
       }
@@ -85,7 +85,7 @@ export class Gene {
    * Attempt to squish rooms horizontally (reduce width, increase height).
    * If aspect ratio limits are violated, translate instead.
    */
-  private trySquishHorizontal(roomA: RoomStateES, roomB: RoomStateES, overlap: number): void {
+  private trySquishHorizontal(roomA: RoomStateES, roomB: RoomStateES, overlap: number, globalTargetRatio?: number): void {
     const shrinkAmount = overlap * 0.5 + 0.1; // Small buffer
 
     // Try to shrink both rooms' widths
@@ -100,12 +100,16 @@ export class Gene {
     const ratioA = newWidthA / newHeightA;
     const ratioB = newWidthB / newHeightB;
 
-    // Compute valid range: [1/targetRatio, targetRatio]
-    const minRatioA = 1.0 / roomA.targetRatio;
-    const minRatioB = 1.0 / roomB.targetRatio;
+    // Use global target ratio if provided, otherwise use room-specific ratios
+    const targetRatioA = globalTargetRatio ?? roomA.targetRatio;
+    const targetRatioB = globalTargetRatio ?? roomB.targetRatio;
 
-    const validA = ratioA >= minRatioA && ratioA <= roomA.targetRatio;
-    const validB = ratioB >= minRatioB && ratioB <= roomB.targetRatio;
+    // Compute valid range: [1/targetRatio, targetRatio]
+    const minRatioA = 1.0 / targetRatioA;
+    const minRatioB = 1.0 / targetRatioB;
+
+    const validA = ratioA >= minRatioA && ratioA <= targetRatioA;
+    const validB = ratioB >= minRatioB && ratioB <= targetRatioB;
 
     if (validA && validB) {
       // Both can squish - apply the transformation
@@ -130,7 +134,7 @@ export class Gene {
    * Attempt to squish rooms vertically (reduce height, increase width).
    * If aspect ratio limits are violated, translate instead.
    */
-  private trySquishVertical(roomA: RoomStateES, roomB: RoomStateES, overlap: number): void {
+  private trySquishVertical(roomA: RoomStateES, roomB: RoomStateES, overlap: number, globalTargetRatio?: number): void {
     const shrinkAmount = overlap * 0.5 + 0.1; // Small buffer
 
     // Try to shrink both rooms' heights
@@ -145,12 +149,16 @@ export class Gene {
     const ratioA = newWidthA / newHeightA;
     const ratioB = newWidthB / newHeightB;
 
-    // Compute valid range: [1/targetRatio, targetRatio]
-    const minRatioA = 1.0 / roomA.targetRatio;
-    const minRatioB = 1.0 / roomB.targetRatio;
+    // Use global target ratio if provided, otherwise use room-specific ratios
+    const targetRatioA = globalTargetRatio ?? roomA.targetRatio;
+    const targetRatioB = globalTargetRatio ?? roomB.targetRatio;
 
-    const validA = ratioA >= minRatioA && ratioA <= roomA.targetRatio;
-    const validB = ratioB >= minRatioB && ratioB <= roomB.targetRatio;
+    // Compute valid range: [1/targetRatio, targetRatio]
+    const minRatioA = 1.0 / targetRatioA;
+    const minRatioB = 1.0 / targetRatioB;
+
+    const validA = ratioA >= minRatioA && ratioA <= targetRatioA;
+    const validB = ratioB >= minRatioB && ratioB <= targetRatioB;
 
     if (validA && validB) {
       // Both can squish - apply the transformation
@@ -325,7 +333,7 @@ export class Gene {
    * Mutate this gene by randomly altering room positions and aspect ratios.
    * This explores the solution space by trying different configurations.
    */
-  mutate(mutationRate: number, mutationStrength: number, aspectRatioMutationRate?: number): void {
+  mutate(mutationRate: number, mutationStrength: number, aspectRatioMutationRate?: number, globalTargetRatio?: number): void {
     const aspectMutationRate = aspectRatioMutationRate ?? mutationRate;
 
     for (const room of this.rooms) {
@@ -337,10 +345,13 @@ export class Gene {
 
       // Aspect ratio mutation (key innovation from original C#)
       if (Math.random() < aspectMutationRate) {
+        // Use global target ratio if provided, otherwise use room-specific ratio
+        const targetRatio = globalTargetRatio ?? room.targetRatio;
+
         // Compute min/max ratio from targetRatio
         // Valid range: [1/targetRatio, targetRatio]
-        const minRatio = 1.0 / room.targetRatio;
-        const maxRatio = room.targetRatio;
+        const minRatio = 1.0 / targetRatio;
+        const maxRatio = targetRatio;
 
         // Random aspect ratio within allowed range
         const randomRatio = minRatio + Math.random() * (maxRatio - minRatio);

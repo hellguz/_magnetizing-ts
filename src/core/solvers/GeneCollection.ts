@@ -11,16 +11,19 @@ export class GeneCollection {
   private boundary: Vec2[];
   private adjacencies: Adjacency[];
   private config: SpringConfig;
+  private globalTargetRatio: number | undefined;
 
   constructor(
     initialRooms: RoomStateES[],
     boundary: Vec2[],
     adjacencies: Adjacency[],
-    config: SpringConfig
+    config: SpringConfig,
+    globalTargetRatio?: number
   ) {
     this.boundary = boundary;
     this.adjacencies = adjacencies;
     this.config = config;
+    this.globalTargetRatio = globalTargetRatio;
 
     // Initialize population with random variations
     this.initializePopulation(initialRooms);
@@ -37,7 +40,7 @@ export class GeneCollection {
     // Create the rest of the population with mutations
     for (let i = 1; i < this.config.populationSize; i++) {
       const gene = baseGene.clone();
-      gene.mutate(0.5, this.config.mutationStrength * 2, this.config.aspectRatioMutationRate); // Higher initial mutation
+      gene.mutate(0.5, this.config.mutationStrength * 2, this.config.aspectRatioMutationRate, this.globalTargetRatio); // Higher initial mutation
       this.genes.push(gene);
     }
   }
@@ -54,7 +57,7 @@ export class GeneCollection {
   iterate(): void {
     // Step 1: Apply collision resolution to all genes
     for (const gene of this.genes) {
-      gene.applySquishCollisions(this.boundary);
+      gene.applySquishCollisions(this.boundary, this.globalTargetRatio);
     }
 
     // Step 2: Calculate fitness for all genes
@@ -84,7 +87,7 @@ export class GeneCollection {
 
     // Step 5: Mutate offspring
     for (const child of offspring) {
-      child.mutate(this.config.mutationRate, this.config.mutationStrength, this.config.aspectRatioMutationRate);
+      child.mutate(this.config.mutationRate, this.config.mutationStrength, this.config.aspectRatioMutationRate, this.globalTargetRatio);
     }
 
     // Step 6: Add offspring to population
@@ -98,7 +101,7 @@ export class GeneCollection {
     while (this.genes.length < this.config.populationSize) {
       const randomGene = this.genes[Math.floor(Math.random() * this.genes.length)];
       const clone = randomGene.clone();
-      clone.mutate(this.config.mutationRate, this.config.mutationStrength, this.config.aspectRatioMutationRate);
+      clone.mutate(this.config.mutationRate, this.config.mutationStrength, this.config.aspectRatioMutationRate, this.globalTargetRatio);
       this.genes.push(clone);
     }
   }

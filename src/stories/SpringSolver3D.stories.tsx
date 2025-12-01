@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Canvas } from '@react-three/fiber';
 import { SceneContainer } from '../visualization/SceneContainer.js';
@@ -188,6 +188,7 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
   const animationIdRef = useRef<number | null>(null);
   const templateRef = useRef<SpringTemplate | null>(null);
   const [editableBoundary, setEditableBoundary] = useState<Vec2[]>([]);
+  const initialCameraTargetRef = useRef<[number, number, number]>([0, 0, 0]);
 
   // Helper: Calculate centroid of a polygon
   const calculateCentroid = useCallback((points: Vec2[]) => {
@@ -199,11 +200,11 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
     return { x: x / points.length, y: y / points.length };
   }, []);
 
-  // Only recreate solver when template or config changes
-  useMemo(() => {
+  // Initialize boundary when template or boundary scale changes
+  React.useEffect(() => {
     const template = springTemplates[args.template];
     templateRef.current = template;
-    const { rooms, boundary: templateBoundary, adjacencies } = template;
+    const { boundary: templateBoundary } = template;
 
     // Apply boundary scaling towards centroid
     const centroid = calculateCentroid(templateBoundary);
@@ -215,7 +216,21 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
     scaledBoundaryRef.current = boundary;
     setEditableBoundary(boundary);
 
-    solverRef.current = new SpringSolver(rooms, boundary, adjacencies, {
+    // Set initial camera target (only when template/scale changes)
+    const centerX = boundary.reduce((sum, p) => sum + p.x, 0) / boundary.length;
+    const centerY = boundary.reduce((sum, p) => sum + p.y, 0) / boundary.length;
+    initialCameraTargetRef.current = [centerX, centerY, 0];
+  }, [args.template, args.boundaryScale, calculateCentroid]);
+
+  // Recreate solver when solver parameters change
+  React.useEffect(() => {
+    const template = templateRef.current;
+    if (!template) return;
+
+    const { rooms, adjacencies } = template;
+    const currentBoundary = scaledBoundaryRef.current;
+
+    solverRef.current = new SpringSolver(rooms, currentBoundary, adjacencies, {
       populationSize: args.populationSize,
       maxGenerations: 1000,
       mutationRate: args.mutationRate,
@@ -227,7 +242,7 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
     }, args.globalTargetRatio);
 
     setVersion((v) => v + 1);
-  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.boundaryScale, args.globalTargetRatio, calculateCentroid]);
+  }, [args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio]);
 
   // Handle boundary changes from editor
   const handleBoundaryChange = useCallback((newPoints: Vec2[]) => {
@@ -284,15 +299,10 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
   const rooms = solverRef.current?.getState() || [];
   const adjacencies = springTemplates[args.template].adjacencies;
 
-  // Calculate center of boundary for camera positioning
-  const boundary = scaledBoundaryRef.current;
-  const centerX = boundary.reduce((sum, p) => sum + p.x, 0) / boundary.length;
-  const centerY = boundary.reduce((sum, p) => sum + p.y, 0) / boundary.length;
-
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <Canvas>
-        <SceneContainer zoom={1} target={[centerX, centerY, 0]}>
+        <SceneContainer zoom={1} target={initialCameraTargetRef.current}>
           <SpringSystem3D
             rooms={rooms}
             adjacencies={adjacencies}
@@ -429,7 +439,7 @@ export const Default: Story = {
     fitnessBalance: 0.8,
     aspectRatioMutationRate: 0.3,
     boundaryScale: 1.0,
-    globalTargetRatio: 0.3,
+    globalTargetRatio: 3,
     autoPlay: true,
     showAdjacencies: true,
     showBoundary: true,

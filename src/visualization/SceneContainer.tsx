@@ -4,6 +4,7 @@ import { OrthographicCamera, MapControls } from '@react-three/drei';
 interface SceneContainerProps {
   children: ReactNode;
   zoom?: number;
+  target?: [number, number, number];
 }
 
 /**
@@ -12,14 +13,15 @@ interface SceneContainerProps {
  */
 export const SceneContainer: React.FC<SceneContainerProps> = ({
   children,
-  zoom = 200
+  zoom = 200,
+  target = [0, 0, 0]
 }) => {
   return (
     <>
       {/* Orthographic camera looking down Z-axis */}
       <OrthographicCamera
         makeDefault
-        position={[0, 0, 100]}
+        position={[target[0], target[1], 100]}
         zoom={zoom}
         near={0.1}
         far={1000}
@@ -31,6 +33,7 @@ export const SceneContainer: React.FC<SceneContainerProps> = ({
         screenSpacePanning={true}
         dampingFactor={0.1}
         enableDamping={true}
+        target={target}
       />
 
       {/* Flat, even lighting for floor plans */}

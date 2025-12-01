@@ -284,10 +284,15 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
   const rooms = solverRef.current?.getState() || [];
   const adjacencies = springTemplates[args.template].adjacencies;
 
+  // Calculate center of boundary for camera positioning
+  const boundary = scaledBoundaryRef.current;
+  const centerX = boundary.reduce((sum, p) => sum + p.x, 0) / boundary.length;
+  const centerY = boundary.reduce((sum, p) => sum + p.y, 0) / boundary.length;
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <Canvas>
-        <SceneContainer zoom={1}>
+        <SceneContainer zoom={1} target={[centerX, centerY, 0]}>
           <SpringSystem3D
             rooms={rooms}
             adjacencies={adjacencies}

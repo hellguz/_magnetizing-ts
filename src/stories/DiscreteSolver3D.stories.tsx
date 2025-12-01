@@ -277,10 +277,14 @@ const DiscreteSolverVisualization: React.FC<DiscreteVisualizationArgs> = (args) 
 
   if (!grid || !template) return null;
 
+  // Calculate center based on actual rendered grid size (in world coordinates)
+  const centerX = (grid.width * args.cellSize) / 2;
+  const centerY = (grid.height * args.cellSize) / 2;
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <Canvas>
-        <SceneContainer zoom={20}>
+        <SceneContainer zoom={1.2} target={[centerX, centerY, 0]}>
           <DiscreteGrid3D grid={grid} cellSize={args.cellSize} />
           <DiscreteGridOverlay
             boundary={scaledBoundaryRef.current}

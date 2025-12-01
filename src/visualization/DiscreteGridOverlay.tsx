@@ -75,7 +75,7 @@ export const DiscreteGridOverlay: React.FC<DiscreteGridOverlayProps> = ({
               [centerA.x, centerA.y, 0.2],
               [centerB.x, centerB.y, 0.2],
             ]}
-            color="rgba(255, 100, 100, 0.6)"
+            color="rgba(92, 92, 92, 0.6)"
             lineWidth={2}
             dashed={true}
             dashSize={5}

@@ -25,9 +25,9 @@ export function BoundaryEditor({
   points,
   onChange,
   editable = true,
-  color = '#ff0000',
-  vertexSize = 8,
-  edgeSplitterSize = 4,
+  color = 'rgba(0, 0, 0, 1)',
+  vertexSize = 12,
+  edgeSplitterSize = 8,
 }: BoundaryEditorProps) {
   // Convert points to 3D coordinates for Three.js (add z=0)
   const linePoints = useMemo(() => {
@@ -64,9 +64,6 @@ export function BoundaryEditor({
         points={linePoints}
         color={color}
         lineWidth={2}
-        dashed
-        dashSize={0.3}
-        gapSize={0.15}
       />
 
       {/* Vertex handles (editable points) */}
@@ -194,7 +191,7 @@ function VertexHandle({ position, index, points, onChange, size }: VertexHandleP
       {...(bind() as any)}
     >
       <circleGeometry args={[displaySize, 16]} />
-      <meshBasicMaterial color={dragging ? '#4ecdc4' : '#000000'} depthTest={false} />
+      <meshBasicMaterial color={dragging ? '#223692ff' : '#000000'} depthTest={false} />
     </mesh>
   );
 }
@@ -285,7 +282,7 @@ function EdgeSplitter({ position, insertIndex, points, onChange, size }: EdgeSpl
       {...(bind() as any)}
     >
       <circleGeometry args={[displaySize, 12]} />
-      <meshBasicMaterial color={active ? '#4ecdc4' : '#666666'} />
+      <meshBasicMaterial color={active ? '#223692ff' : '#000000'} />
     </mesh>
   );
 }

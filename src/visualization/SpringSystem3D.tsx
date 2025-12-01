@@ -123,11 +123,8 @@ export const SpringSystem3D: React.FC<SpringSystem3DProps> = ({
       {showBoundary && boundary && boundary.length > 0 && (
         <Line
           points={[...boundary.map(p => [p.x, p.y, 0]), [boundary[0].x, boundary[0].y, 0]]}
-          color="red"
+          color="#2c2c2cff"
           lineWidth={3}
-          dashed={true}
-          dashSize={10}
-          gapSize={5}
         />
       )}
 
@@ -154,11 +151,8 @@ export const SpringSystem3D: React.FC<SpringSystem3DProps> = ({
               [centerA.x, centerA.y, 0],
               [centerB.x, centerB.y, 0],
             ]}
-            color="red"
-            lineWidth={2}
-            dashed={true}
-            dashSize={5}
-            gapSize={5}
+            color="rgba(117, 117, 117, 1)"
+            lineWidth={1}
           />
         );
       })}

@@ -433,7 +433,7 @@ export const Default: Story = {
     template: 'house',
     populationSize: 50,
     mutationRate: 0.5,
-    mutationStrength: 10,
+    mutationStrength: 40,
     crossoverRate: 0.5,
     selectionPressure: 0.9,
     fitnessBalance: 0.9,

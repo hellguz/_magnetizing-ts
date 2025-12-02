@@ -885,12 +885,12 @@ type Story = StoryObj<SpringVisualizationArgs>;
 export const Default: Story = {
   args: {
     template: 'house',
-    populationSize: 50,
+    populationSize: 25,
     mutationRate: 0.5,
     mutationStrength: 40,
     crossoverRate: 0.5,
-    selectionPressure: 0.9,
-    fitnessBalance: 0.6,
+    selectionPressure: 0.25,
+    fitnessBalance: 0.5,
     aspectRatioMutationRate: 0.3,
     boundaryScale: 1.0,
     globalTargetRatio: 2,
@@ -900,11 +900,11 @@ export const Default: Story = {
     editBoundary: true,
 
     // Advanced Optimization Features (all disabled by default for comparison)
-    useQuadraticPenalty: false,
-    useSimulatedAnnealing: false,
-    useSwapMutation: false,
-    swapMutationRate: 0.1,
-    usePartnerBias: false,
+    useQuadraticPenalty: true,
+    useSimulatedAnnealing: true,
+    useSwapMutation: true,
+    swapMutationRate: 0.4,
+    usePartnerBias: true,
     partnerBiasRate: 0.4,
     useCenterGravity: false,
     centerGravityRate: 0.3,

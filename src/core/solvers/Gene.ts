@@ -19,6 +19,8 @@ export class Gene {
       ...r,
       pressureX: r.pressureX ?? 0,
       pressureY: r.pressureY ?? 0,
+      accumulatedPressureX: r.accumulatedPressureX ?? 0,
+      accumulatedPressureY: r.accumulatedPressureY ?? 0,
     }));
   }
 
@@ -107,6 +109,13 @@ export class Gene {
       if (!hadCollision) {
         break;
       }
+    }
+
+    // After collision resolution, save temporary pressure to persistent accumulated pressure
+    // This allows mutation to use pressure data even after collisions are resolved
+    for (const room of this.rooms) {
+      room.accumulatedPressureX = room.pressureX;
+      room.accumulatedPressureY = room.pressureY;
     }
 
     // After all collisions, ensure rooms stay within boundary
@@ -553,8 +562,9 @@ export class Gene {
         const maxRatio = targetRatio;
 
         // Calculate pressure differential to determine mutation bias
-        const pressureDelta = room.pressureX - room.pressureY;
-        const totalPressure = room.pressureX + room.pressureY;
+        // Use accumulated pressure (persistent) instead of temporary pressure
+        const pressureDelta = room.accumulatedPressureX - room.accumulatedPressureY;
+        const totalPressure = room.accumulatedPressureX + room.accumulatedPressureY;
 
         // Determine bias direction based on pressure
         let bias = 0;
@@ -743,9 +753,12 @@ export class Gene {
         height: Math.random() < 0.5 ? parentA.height : parentB.height,
         targetRatio: parentA.targetRatio,
         targetArea: parentA.targetArea,
-        // Pressure values reset to 0 for new generation (calculated fresh each iteration)
+        // Temporary pressure reset to 0 (calculated fresh each collision resolution)
         pressureX: 0,
         pressureY: 0,
+        // Accumulated pressure inherited from parents (average for smooth inheritance)
+        accumulatedPressureX: (parentA.accumulatedPressureX + parentB.accumulatedPressureX) / 2,
+        accumulatedPressureY: (parentA.accumulatedPressureY + parentB.accumulatedPressureY) / 2,
       };
 
       childRooms.push(child);

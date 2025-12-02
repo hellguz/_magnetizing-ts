@@ -58,8 +58,10 @@ export class SpringSolver {
       height: r.height,
       targetRatio: r.targetRatio,
       targetArea: r.width * r.height, // Preserve initial area
-      pressureX: 0, // Initialize pressure tracking
+      pressureX: 0, // Initialize temporary pressure tracking
       pressureY: 0,
+      accumulatedPressureX: 0, // Initialize persistent pressure tracking
+      accumulatedPressureY: 0,
     }));
 
     this.config = {

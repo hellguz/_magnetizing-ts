@@ -83,6 +83,8 @@ export interface RoomStateES {
   height: number;
   targetRatio: number; // Max aspect ratio (W/H). Valid range: [1/targetRatio, targetRatio]
   targetArea: number; // Store target area for mutations
-  pressureX: number; // Accumulated horizontal collision pressure (used for adaptive aspect ratio)
-  pressureY: number; // Accumulated vertical collision pressure (used for adaptive aspect ratio)
+  pressureX: number; // Temporary horizontal collision pressure (reset each iteration)
+  pressureY: number; // Temporary vertical collision pressure (reset each iteration)
+  accumulatedPressureX: number; // Persistent pressure used for mutation guidance
+  accumulatedPressureY: number; // Persistent pressure used for mutation guidance
 }

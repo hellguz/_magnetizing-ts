@@ -366,10 +366,10 @@ export class Gene {
     this.fitnessG = this.calculateGeometricFitness(boundary);
     this.fitnessT = this.calculateTopologicalFitness(adjacencies, config);
 
-    // Combined fitness (lower is better)
-    // Note: We use 1/fitnessT to invert topological fitness (closer connections = better)
-    const topologicalComponent = this.fitnessT > 0 ? 1.0 / this.fitnessT : 0;
-    this.fitness = (this.fitnessG * balance) + (topologicalComponent * (1 - balance));
+    // FIX: Use direct summation. Lower fitness is better.
+    // We heavily penalize distance to force aggressive attraction.
+    // Both fitnessG (overlaps) and fitnessT (distance squared) are "bad" metrics.
+    this.fitness = (this.fitnessG * balance) + (this.fitnessT * (1 - balance));
   }
 
   /**

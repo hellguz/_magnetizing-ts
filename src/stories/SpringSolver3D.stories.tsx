@@ -909,7 +909,7 @@ export const Default: Story = {
     useCenterGravity: false,
     centerGravityRate: 0.3,
     centerGravityStrength: 0.05,
-    useAggressiveInflation: true,
+    useAggressiveInflation: false,
     inflationRate: 1.02,
     inflationThreshold: 1.05,
   },

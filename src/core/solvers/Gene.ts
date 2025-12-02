@@ -14,7 +14,12 @@ export class Gene {
 
   constructor(rooms: RoomStateES[]) {
     // Deep copy the rooms to ensure independence
-    this.rooms = rooms.map(r => ({ ...r }));
+    // Initialize pressure values to 0 if not present (backwards compatibility)
+    this.rooms = rooms.map(r => ({
+      ...r,
+      pressureX: r.pressureX ?? 0,
+      pressureY: r.pressureY ?? 0,
+    }));
   }
 
   /**
@@ -38,8 +43,15 @@ export class Gene {
    * 3. If scaling violates aspect ratio constraints, TRANSLATE (move) instead
    *
    * FIXED: Now includes multiple iterations to resolve chain reactions
+   * FIXED: Pressure accumulation only on first iteration to prevent over-counting
    */
   applySquishCollisions(boundary: Vec2[], config: SpringConfig, globalTargetRatio?: number): void {
+    // Reset pressure accumulators for all rooms
+    for (const room of this.rooms) {
+      room.pressureX = 0;
+      room.pressureY = 0;
+    }
+
     // FEATURE: Aggressive Inflation - grow rooms before collision resolution
     if (config.useAggressiveInflation) {
       this.applyAggressiveInflation(config);
@@ -79,12 +91,13 @@ export class Gene {
             const overlapY = Math.min(aabbA.maxY, aabbB.maxY) - Math.max(aabbA.minY, aabbB.minY);
 
             // Try to squish along the smaller overlap dimension
+            // Only accumulate pressure on first iteration to avoid over-counting
             if (overlapX < overlapY) {
               // Overlap is more horizontal, try to squish widths
-              this.trySquishHorizontal(roomA, roomB, overlapX, globalTargetRatio);
+              this.trySquishHorizontal(roomA, roomB, overlapX, globalTargetRatio, iteration === 0);
             } else {
               // Overlap is more vertical, try to squish heights
-              this.trySquishVertical(roomA, roomB, overlapY, globalTargetRatio);
+              this.trySquishVertical(roomA, roomB, overlapY, globalTargetRatio, iteration === 0);
             }
           }
         }
@@ -108,7 +121,13 @@ export class Gene {
    * When a room on the RIGHT is squished, we increase its x (move left edge right)
    * while decreasing width (move right edge left). This "squishes from the left".
    */
-  private trySquishHorizontal(roomA: RoomStateES, roomB: RoomStateES, overlap: number, globalTargetRatio?: number): void {
+  private trySquishHorizontal(roomA: RoomStateES, roomB: RoomStateES, overlap: number, globalTargetRatio?: number, accumulatePressure: boolean = true): void {
+    // Accumulate horizontal pressure on both rooms (only on first iteration)
+    if (accumulatePressure) {
+      roomA.pressureX += overlap;
+      roomB.pressureX += overlap;
+    }
+
     const shrinkAmount = overlap * 0.5 + 0.1; // Small buffer
 
     // Try to shrink both rooms' widths
@@ -176,7 +195,13 @@ export class Gene {
    * When a room on the BOTTOM is squished, we increase its y (move top edge down)
    * while decreasing height (move bottom edge up). This "squishes from the top".
    */
-  private trySquishVertical(roomA: RoomStateES, roomB: RoomStateES, overlap: number, globalTargetRatio?: number): void {
+  private trySquishVertical(roomA: RoomStateES, roomB: RoomStateES, overlap: number, globalTargetRatio?: number, accumulatePressure: boolean = true): void {
+    // Accumulate vertical pressure on both rooms (only on first iteration)
+    if (accumulatePressure) {
+      roomA.pressureY += overlap;
+      roomB.pressureY += overlap;
+    }
+
     const shrinkAmount = overlap * 0.5 + 0.1; // Small buffer
 
     // Try to shrink both rooms' heights
@@ -505,7 +530,8 @@ export class Gene {
         room.y += (Math.random() - 0.5) * mutationStrength;
       }
 
-      // Aspect ratio mutation (key innovation from original C#)
+      // FEATURE: Pressure-Guided Aspect Ratio Mutation
+      // Rooms adapt their shape based on collision pressure instead of random mutations
       if (Math.random() < aspectMutationRate) {
         // Use global target ratio if provided (but not for corridors), otherwise use room-specific ratio
         const isCorridor = room.id.startsWith('corridor-');
@@ -516,11 +542,40 @@ export class Gene {
         const minRatio = 1.0 / targetRatio;
         const maxRatio = targetRatio;
 
-        // Random aspect ratio within allowed range
-        const randomRatio = minRatio + Math.random() * (maxRatio - minRatio);
+        // Calculate pressure differential to determine mutation bias
+        const pressureDelta = room.pressureX - room.pressureY;
+        const totalPressure = room.pressureX + room.pressureY;
+
+        // Determine bias direction based on pressure
+        let bias = 0;
+        const PRESSURE_SENSITIVITY = 0.3; // How strongly pressure influences aspect ratio
+
+        if (totalPressure > 0.1) { // Only apply bias if there's significant pressure
+          if (pressureDelta > 0.5) {
+            // High horizontal pressure → make room taller/thinner (lower ratio)
+            bias = -PRESSURE_SENSITIVITY;
+          } else if (pressureDelta < -0.5) {
+            // High vertical pressure → make room wider/shorter (higher ratio)
+            bias = PRESSURE_SENSITIVITY;
+          }
+        } else {
+          // Low pressure on both axes → room is in a void, allow inflation
+          // This is handled by aggressive inflation feature
+        }
+
+        // Get current aspect ratio
+        const currentRatio = room.width / room.height;
+
+        // Apply biased mutation: move toward pressure-indicated direction
+        // Start with small random change, then add pressure bias
+        const randomChange = (Math.random() - 0.5) * 0.2; // Small random component
+        let newRatio = currentRatio * (1 + randomChange + bias);
+
+        // Clamp to valid range
+        newRatio = Math.max(minRatio, Math.min(maxRatio, newRatio));
 
         // Calculate new dimensions maintaining area
-        room.width = Math.sqrt(room.targetArea * randomRatio);
+        room.width = Math.sqrt(room.targetArea * newRatio);
         room.height = room.targetArea / room.width;
       }
 
@@ -678,6 +733,9 @@ export class Gene {
         height: Math.random() < 0.5 ? parentA.height : parentB.height,
         targetRatio: parentA.targetRatio,
         targetArea: parentA.targetArea,
+        // Pressure values reset to 0 for new generation (calculated fresh each iteration)
+        pressureX: 0,
+        pressureY: 0,
       };
 
       childRooms.push(child);

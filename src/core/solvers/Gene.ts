@@ -383,22 +383,42 @@ export class Gene {
   ): void {
     const aspectMutationRate = aspectRatioMutationRate ?? mutationRate;
 
-    // FEATURE: Swap Mutation - teleport two random rooms to untangle topology
+    // FEATURE: Swap Mutation - intelligent teleport to untangle topology
     if (config.useSwapMutation && Math.random() < (config.swapMutationRate ?? 0.1)) {
-      const roomAIndex = Math.floor(Math.random() * this.rooms.length);
-      const roomBIndex = Math.floor(Math.random() * this.rooms.length);
+      // Find the most beneficial swap based on adjacency distances
+      const swapCandidates = this.findBestSwapCandidates(adjacencies);
 
-      if (roomAIndex !== roomBIndex) {
-        const roomA = this.rooms[roomAIndex];
-        const roomB = this.rooms[roomBIndex];
+      if (swapCandidates.length > 0) {
+        // Pick a random candidate from top 3 worst connections
+        const candidate = swapCandidates[Math.floor(Math.random() * Math.min(3, swapCandidates.length))];
+        const roomA = this.rooms.find(r => r.id === candidate.roomAId);
+        const roomB = this.rooms.find(r => r.id === candidate.roomBId);
 
-        // Swap positions only (not dimensions)
-        const tempX = roomA.x;
-        const tempY = roomA.y;
-        roomA.x = roomB.x;
-        roomA.y = roomB.y;
-        roomB.x = tempX;
-        roomB.y = tempY;
+        if (roomA && roomB) {
+          // Swap positions only (not dimensions)
+          const tempX = roomA.x;
+          const tempY = roomA.y;
+          roomA.x = roomB.x;
+          roomA.y = roomB.y;
+          roomB.x = tempX;
+          roomB.y = tempY;
+        }
+      } else {
+        // Fallback to random swap if no good candidates
+        const roomAIndex = Math.floor(Math.random() * this.rooms.length);
+        const roomBIndex = Math.floor(Math.random() * this.rooms.length);
+
+        if (roomAIndex !== roomBIndex) {
+          const roomA = this.rooms[roomAIndex];
+          const roomB = this.rooms[roomBIndex];
+
+          const tempX = roomA.x;
+          const tempY = roomA.y;
+          roomA.x = roomB.x;
+          roomA.y = roomB.y;
+          roomB.x = tempX;
+          roomB.y = tempY;
+        }
       }
     }
 
@@ -502,6 +522,92 @@ export class Gene {
     // Pick a random neighbor
     const neighborId = neighbors[Math.floor(Math.random() * neighbors.length)];
     return this.rooms.find(r => r.id === neighborId) ?? null;
+  }
+
+  /**
+   * Find the best room pairs to swap based on adjacency violations.
+   * Returns pairs sorted by potential fitness improvement (worst connections first).
+   */
+  private findBestSwapCandidates(adjacencies: Adjacency[]): Array<{
+    roomAId: string;
+    roomBId: string;
+    improvementScore: number;
+  }> {
+    const candidates: Array<{
+      roomAId: string;
+      roomBId: string;
+      improvementScore: number;
+    }> = [];
+
+    // For each adjacency, check if swapping the connected rooms would help
+    for (const adj of adjacencies) {
+      const roomA = this.rooms.find(r => r.id === adj.a);
+      const roomB = this.rooms.find(r => r.id === adj.b);
+
+      if (!roomA || !roomB) continue;
+
+      // Calculate current distance
+      const currentDistance = this.calculateDistance(roomA, roomB);
+
+      // Calculate what distance would be if we swapped their positions
+      const swappedDistance = this.calculateDistanceSwapped(roomA, roomB);
+
+      // If swapping would reduce distance significantly, it's a good candidate
+      const improvement = currentDistance - swappedDistance;
+
+      if (improvement > 0) {
+        // Weight by adjacency weight
+        const weightedImprovement = improvement * (adj.weight ?? 1.0);
+
+        candidates.push({
+          roomAId: adj.a,
+          roomBId: adj.b,
+          improvementScore: weightedImprovement,
+        });
+      }
+    }
+
+    // Sort by improvement score (highest first = worst current connections)
+    candidates.sort((a, b) => b.improvementScore - a.improvementScore);
+
+    return candidates;
+  }
+
+  /**
+   * Calculate center-to-center distance between two rooms
+   */
+  private calculateDistance(roomA: RoomStateES, roomB: RoomStateES): number {
+    const centerA = {
+      x: roomA.x + roomA.width / 2,
+      y: roomA.y + roomA.height / 2,
+    };
+    const centerB = {
+      x: roomB.x + roomB.width / 2,
+      y: roomB.y + roomB.height / 2,
+    };
+
+    const dx = centerB.x - centerA.x;
+    const dy = centerB.y - centerA.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /**
+   * Calculate what the distance would be if two rooms swapped positions
+   */
+  private calculateDistanceSwapped(roomA: RoomStateES, roomB: RoomStateES): number {
+    // Calculate centers as if positions were swapped
+    const centerA = {
+      x: roomB.x + roomA.width / 2, // A's dimensions at B's position
+      y: roomB.y + roomA.height / 2,
+    };
+    const centerB = {
+      x: roomA.x + roomB.width / 2, // B's dimensions at A's position
+      y: roomA.y + roomB.height / 2,
+    };
+
+    const dx = centerB.x - centerA.x;
+    const dy = centerB.y - centerA.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   /**

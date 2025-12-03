@@ -572,9 +572,9 @@ export class Gene {
         const connectedNeighbor = this.findConnectedNeighbor(room, adjacencies);
 
         if (connectedNeighbor) {
-          // Move 20% closer to the neighbor
-          const dx = (connectedNeighbor.x - room.x) * 0.2;
-          const dy = (connectedNeighbor.y - room.y) * 0.2;
+          // Move 70% closer to the neighbor
+          const dx = (connectedNeighbor.x - room.x) * 0.7;
+          const dy = (connectedNeighbor.y - room.y) * 0.7;
           room.x += dx;
           room.y += dy;
           mutationApplied = true;

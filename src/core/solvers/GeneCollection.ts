@@ -158,21 +158,15 @@ export class GeneCollection {
         // Get template for structure (room properties) but will randomize positions
         const templateGene = this.genes[0];
 
-        // Calculate boundary bounds for random placement
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        for (const p of this.boundary) {
-          minX = Math.min(minX, p.x);
-          maxX = Math.max(maxX, p.x);
-          minY = Math.min(minY, p.y);
-          maxY = Math.max(maxY, p.y);
-        }
+        // Calculate centroid of the BEST gene's rooms
+        // Fresh blood should spawn NEAR the optimal region, not randomly across the entire boundary
+        const bestGene = this.genes[0]; // Already sorted by fitness
+        const centroidX = bestGene.rooms.reduce((sum, r) => sum + r.x, 0) / bestGene.rooms.length;
+        const centroidY = bestGene.rooms.reduce((sum, r) => sum + r.y, 0) / bestGene.rooms.length;
 
-        // Add some margin to keep rooms away from edges initially
-        const margin = 20;
-        minX += margin;
-        maxX -= margin;
-        minY += margin;
-        maxY -= margin;
+        // Define spawn radius: how far from the centroid to randomize
+        // This maintains locality while introducing diversity
+        const spawnRadius = this.config.freshBloodSpawnRadius ?? 100;
 
         // PREPARE INCUBATION CONFIG
         // Create a "Hyper-Active" config for the warm-up phase to force topological untangling
@@ -189,12 +183,16 @@ export class GeneCollection {
         for (let i = 0; i < numToReplace; i++) {
           const freshGene = templateGene.clone();
 
-          // 1. HARD RESET: Scramble all positions randomly within boundary
-          // This simulates "refreshing the page" - completely new starting configuration
+          // 1. LOCALIZED RESET: Scramble positions NEAR the best gene's centroid
+          // This prevents layout "explosion" by keeping fresh blood in the optimal region
+          // while still introducing diversity through random offsets
           for (const room of freshGene.rooms) {
-            // Random position within boundary
-            room.x = minX + Math.random() * (maxX - minX);
-            room.y = minY + Math.random() * (maxY - minY);
+            // Random position within spawn radius of centroid
+            // Use polar coordinates for uniform distribution in a circle
+            const angle = Math.random() * 2 * Math.PI;
+            const distance = Math.random() * spawnRadius;
+            room.x = centroidX + Math.cos(angle) * distance;
+            room.y = centroidY + Math.sin(angle) * distance;
 
             // Reset dimensions to initial target values (removes any "squished" bias)
             room.width = Math.sqrt(room.targetArea * room.targetRatio);

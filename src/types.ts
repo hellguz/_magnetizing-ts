@@ -43,6 +43,7 @@ export interface SpringConfig {
   useFreshBlood?: boolean;         // Periodically replace worst performers with new random genes
   freshBloodInterval?: number;     // Every N iterations, inject fresh blood (5-200)
   freshBloodWarmUp?: number;       // Number of physics iterations for new genes (default 30)
+  freshBloodSpawnRadius?: number;  // Spawn radius around best gene's centroid (default 100)
   useNonLinearOverlapPenalty?: boolean; // Apply exponential penalty to overlaps based on size/shape
   overlapPenaltyExponent?: number; // Exponent for overlap penalty (1.0 = linear, 2.0 = quadratic)
 }

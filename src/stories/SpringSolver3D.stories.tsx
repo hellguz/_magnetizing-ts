@@ -867,7 +867,7 @@ const meta: Meta<SpringVisualizationArgs> = {
       description: 'Probability of aspect ratio mutation (room shape exploration)',
     },
     boundaryScale: {
-      control: { type: 'range', min: 0.1, max: 1.0, step: 0.05 },
+      control: { type: 'range', min: 0.1, max: 3.0, step: 0.05 },
       description: 'Scale boundary towards centroid',
     },
     globalTargetRatio: {

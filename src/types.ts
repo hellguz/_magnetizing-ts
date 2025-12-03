@@ -43,6 +43,7 @@ export interface SpringConfig {
   useAggressiveInflation?: boolean; // Force rooms to grow beyond bounds before squish (fills voids)
   inflationRate?: number;          // Growth rate per iteration (e.g., 1.02 = 2% growth)
   inflationThreshold?: number;     // Max overgrowth (e.g., 1.05 = 5% larger than target)
+  warmUpIterations?: number;       // Number of physics iterations to run immediately after mutation (0-50)
 }
 
 export interface RoomRequest {

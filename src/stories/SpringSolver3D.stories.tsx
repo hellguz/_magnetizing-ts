@@ -45,6 +45,7 @@ interface SpringVisualizationArgs {
   useAggressiveInflation: boolean;
   inflationRate: number;
   inflationThreshold: number;
+  warmUpIterations: number;
 }
 
 const springTemplates: Record<TemplateType, SpringTemplate> = {
@@ -599,10 +600,11 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
       useAggressiveInflation: args.useAggressiveInflation,
       inflationRate: args.inflationRate,
       inflationThreshold: args.inflationThreshold,
+      warmUpIterations: args.warmUpIterations,
     }, args.globalTargetRatio);
 
     setVersion((v) => v + 1);
-  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio, args.useQuadraticPenalty, args.useSimulatedAnnealing, args.useSwapMutation, args.swapMutationRate, args.usePartnerBias, args.partnerBiasRate, args.useCenterGravity, args.centerGravityRate, args.centerGravityStrength, args.useAggressiveInflation, args.inflationRate, args.inflationThreshold]);
+  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio, args.useQuadraticPenalty, args.useSimulatedAnnealing, args.useSwapMutation, args.swapMutationRate, args.usePartnerBias, args.partnerBiasRate, args.useCenterGravity, args.centerGravityRate, args.centerGravityStrength, args.useAggressiveInflation, args.inflationRate, args.inflationThreshold, args.warmUpIterations]);
 
   // Handle boundary changes from editor
   const handleBoundaryChange = useCallback((newPoints: Vec2[]) => {
@@ -639,7 +641,7 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
     }, args.globalTargetRatio);
 
     setVersion((v) => v + 1);
-  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio, args.useQuadraticPenalty, args.useSimulatedAnnealing, args.useSwapMutation, args.swapMutationRate, args.usePartnerBias, args.partnerBiasRate, args.useCenterGravity, args.centerGravityRate, args.centerGravityStrength, args.useAggressiveInflation, args.inflationRate, args.inflationThreshold]);
+  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio, args.useQuadraticPenalty, args.useSimulatedAnnealing, args.useSwapMutation, args.swapMutationRate, args.usePartnerBias, args.partnerBiasRate, args.useCenterGravity, args.centerGravityRate, args.centerGravityStrength, args.useAggressiveInflation, args.inflationRate, args.inflationThreshold, args.warmUpIterations]);
 
   // Handle reset generation
   const handleReset = useCallback(() => {
@@ -671,10 +673,11 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
       useAggressiveInflation: args.useAggressiveInflation,
       inflationRate: args.inflationRate,
       inflationThreshold: args.inflationThreshold,
+      warmUpIterations: args.warmUpIterations,
     }, args.globalTargetRatio);
 
     setVersion((v) => v + 1);
-  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio, args.useQuadraticPenalty, args.useSimulatedAnnealing, args.useSwapMutation, args.swapMutationRate, args.usePartnerBias, args.partnerBiasRate, args.useCenterGravity, args.centerGravityRate, args.centerGravityStrength, args.useAggressiveInflation, args.inflationRate, args.inflationThreshold]);
+  }, [args.template, args.populationSize, args.mutationRate, args.mutationStrength, args.crossoverRate, args.selectionPressure, args.fitnessBalance, args.aspectRatioMutationRate, args.globalTargetRatio, args.useQuadraticPenalty, args.useSimulatedAnnealing, args.useSwapMutation, args.swapMutationRate, args.usePartnerBias, args.partnerBiasRate, args.useCenterGravity, args.centerGravityRate, args.centerGravityStrength, args.useAggressiveInflation, args.inflationRate, args.inflationThreshold, args.warmUpIterations]);
 
   // Animation loop controlled by autoPlay prop
   React.useEffect(() => {
@@ -872,6 +875,10 @@ const meta: Meta<SpringVisualizationArgs> = {
       control: { type: 'range', min: 1.0, max: 1.2, step: 0.01 },
       description: 'Max overgrowth (e.g., 1.05 = 5% larger than target, only if useAggressiveInflation is enabled)',
     },
+    warmUpIterations: {
+      control: { type: 'range', min: 0, max: 50, step: 1 },
+      description: '[OPTIMIZATION] Physics Warm-Up: Number of physics iterations to run immediately after mutation (prevents "death of potential geniuses")',
+    },
   },
   parameters: {
     layout: 'fullscreen',
@@ -887,10 +894,10 @@ export const Default: Story = {
     template: 'house',
     populationSize: 25,
     mutationRate: 0.5,
-    mutationStrength: 40,
+    mutationStrength: 30,
     crossoverRate: 0.5,
     selectionPressure: 0.7,
-    fitnessBalance: 0.5,
+    fitnessBalance: 0.9,
     aspectRatioMutationRate: 0.3,
     boundaryScale: 1.0,
     globalTargetRatio: 2,
@@ -912,5 +919,6 @@ export const Default: Story = {
     useAggressiveInflation: false,
     inflationRate: 1.02,
     inflationThreshold: 1.05,
+    warmUpIterations: 20,
   },
 };

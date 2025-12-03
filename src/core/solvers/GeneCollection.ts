@@ -104,6 +104,13 @@ export class GeneCollection {
         this.config,
         this.adjacencies
       );
+
+      // FEATURE: Physics Warm-Up - allow mutated genes to settle before evaluation
+      // Run multiple physics iterations immediately to prevent "death of potential geniuses"
+      const warmUpIterations = this.config.warmUpIterations ?? 0;
+      for (let i = 0; i < warmUpIterations; i++) {
+        child.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio);
+      }
     }
 
     // Step 6: Add offspring to population
@@ -125,6 +132,13 @@ export class GeneCollection {
         this.config,
         this.adjacencies
       );
+
+      // FEATURE: Physics Warm-Up - allow mutated genes to settle before evaluation
+      const warmUpIterations = this.config.warmUpIterations ?? 0;
+      for (let i = 0; i < warmUpIterations; i++) {
+        clone.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio);
+      }
+
       this.genes.push(clone);
     }
 

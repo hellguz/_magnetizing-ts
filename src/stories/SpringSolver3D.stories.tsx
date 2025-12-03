@@ -720,6 +720,12 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
       useAggressiveInflation: args.useAggressiveInflation,
       inflationRate: args.inflationRate,
       inflationThreshold: args.inflationThreshold,
+      warmUpIterations: args.warmUpIterations,
+      useFreshBlood: args.useFreshBlood,
+      freshBloodInterval: args.freshBloodInterval,
+      freshBloodWarmUp: args.freshBloodWarmUp,
+      useNonLinearOverlapPenalty: args.useNonLinearOverlapPenalty,
+      overlapPenaltyExponent: args.overlapPenaltyExponent,
     }, args.globalTargetRatio);
 
     setVersion((v) => v + 1);
@@ -1004,7 +1010,7 @@ export const Default: Story = {
     mutationStrength: 30,
     crossoverRate: 0.5,
     selectionPressure: 0.5,  // LOWERED from 0.7 to allow mediocre genes to survive and evolve
-    fitnessBalance: 0.9,
+    fitnessBalance: 0.3,
     aspectRatioMutationRate: 0.3,
     boundaryScale: 1.0,
     globalTargetRatio: 2,
@@ -1017,7 +1023,7 @@ export const Default: Story = {
     useQuadraticPenalty: true,
     useSimulatedAnnealing: false,
     useSwapMutation: true,  // ENABLED: Surgical tool for untangling topology
-    swapMutationRate: 0.5,  // ADJUSTED to 0.3 (middle of 0.2-0.4 recommended range)
+    swapMutationRate: 0.8,  // ADJUSTED to 0.3 (middle of 0.2-0.4 recommended range)
     usePartnerBias: true,
     partnerBiasRate: 0.4,
     useCenterGravity: false,
@@ -1026,11 +1032,11 @@ export const Default: Story = {
     useAggressiveInflation: false,
     inflationRate: 1.02,
     inflationThreshold: 1.05,
-    warmUpIterations: 20,
+    warmUpIterations: 5,
     useFreshBlood: true,  // ENABLED: Inject fresh blood to escape local minima
-    freshBloodInterval: 20,  // INCREASED to 50: Give time for evolution to settle before next injection
+    freshBloodInterval: 50,  // INCREASED to 50: Give time for evolution to settle before next injection
     freshBloodWarmUp: 100,  // OPTIMIZED to 50: Enough push-pull cycles to form valid clusters
     useNonLinearOverlapPenalty: true,
-    overlapPenaltyExponent: 2,
+    overlapPenaltyExponent: 1.5,
   },
 };

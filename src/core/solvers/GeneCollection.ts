@@ -58,13 +58,6 @@ export class GeneCollection {
    * FEATURE: Simulated Annealing - decay mutation strength over generations
    */
   iterate(): void {
-    // Log every 50 generations to track fresh blood impact
-    if (this.currentGeneration % 50 === 0 && this.currentGeneration > 0) {
-      const fitnesses = this.genes.map(g => g.fitness);
-      const avgFitness = fitnesses.reduce((a, b) => a + b, 0) / fitnesses.length;
-      console.log(`[Gen ${this.currentGeneration}] Population: ${this.genes.length} genes, Avg Fitness: ${avgFitness.toFixed(2)}, Best: ${Math.min(...fitnesses).toFixed(2)}`);
-    }
-
     // FEATURE: Simulated Annealing - calculate annealed mutation strength
     const progress = this.currentGeneration / this.config.maxGenerations;
     const annealedMutationStrength = this.config.useSimulatedAnnealing
@@ -154,37 +147,17 @@ export class GeneCollection {
 
     // FEATURE: Fresh Blood - periodically replace worst performers with new random genes
     // This maintains genetic diversity and prevents premature convergence
-
-    // DEBUG: Log config at gen 50 to verify it's being passed correctly
-    if (this.currentGeneration === 50) {
-      console.log(`🔍 [Gen 50] DEBUG Config Check:`);
-      console.log(`   useFreshBlood: ${this.config.useFreshBlood}`);
-      console.log(`   freshBloodInterval: ${this.config.freshBloodInterval}`);
-      console.log(`   freshBloodWarmUp: ${this.config.freshBloodWarmUp}`);
-    }
-
     if (this.config.useFreshBlood) {
       const interval = this.config.freshBloodInterval ?? 20;
 
       // Skip generation 0 (population is already random at initialization)
       if (this.currentGeneration > 0 && this.currentGeneration % interval === 0) {
-        try {
-          console.log(`\n🩸 [Gen ${this.currentGeneration}] ========== FRESH BLOOD INJECTION ==========`);
-
-          // Sort by fitness to identify worst performers (lower is better, so worst are at the end)
-          this.genes.sort((a, b) => a.fitness - b.fitness);
-
-        const popSizeBefore = this.genes.length;
-        const bestFitnessBefore = this.genes[0].fitness;
-        const worstFitnessBefore = this.genes[this.genes.length - 1].fitness;
+        // Sort by fitness to identify worst performers (lower is better, so worst are at the end)
+        this.genes.sort((a, b) => a.fitness - b.fitness);
 
         // Replace worst quarter with fresh random genes
         const quarterSize = Math.floor(this.genes.length / 4);
         const numToReplace = Math.max(1, quarterSize); // At least 1
-
-        console.log(`   Population before: ${popSizeBefore} genes`);
-        console.log(`   Fitness range: ${bestFitnessBefore.toFixed(2)} (best) to ${worstFitnessBefore.toFixed(2)} (worst)`);
-        console.log(`   Removing ${numToReplace} worst genes (${((numToReplace / this.genes.length) * 100).toFixed(1)}%)`);
 
         // Keep the best 75%
         this.genes = this.genes.slice(0, this.genes.length - numToReplace);
@@ -223,13 +196,8 @@ export class GeneCollection {
         };
 
         // Generate fresh genes and run INCUBATION PHASE
-        const freshGenesFitnesses: number[] = [];
-
         for (let i = 0; i < numToReplace; i++) {
           const freshGene = templateGene.clone();
-
-          // Log inherited fitness (should be best gene's fitness - THIS IS THE BUG WE FIXED)
-          const inheritedFitness = freshGene.fitness;
 
           // 1. HARD RESET: Scramble all positions randomly within boundary
           // This simulates "refreshing the page" - completely new starting configuration
@@ -285,28 +253,10 @@ export class GeneCollection {
             this.config
           );
 
-          freshGenesFitnesses.push(freshGene.fitness);
-
-          if (i === 0) {
-            // Log first fresh gene details
-            console.log(`   Fresh Gene #1: inherited=${inheritedFitness.toFixed(2)} → calculated=${freshGene.fitness.toFixed(2)} (G=${freshGene.fitnessG.toFixed(2)}, T=${freshGene.fitnessT.toFixed(2)})`);
-          }
-
           this.genes.push(freshGene);
+          console.log(`[Fresh Blood] Gen ${this.currentGeneration}: Added fresh gene ${i + 1}/${numToReplace} with fitness ${freshGene.fitness.toFixed(4)}`);
         }
-
-        const popSizeAfter = this.genes.length;
-        const avgFreshFitness = freshGenesFitnesses.reduce((a, b) => a + b, 0) / freshGenesFitnesses.length;
-        const minFreshFitness = Math.min(...freshGenesFitnesses);
-        const maxFreshFitness = Math.max(...freshGenesFitnesses);
-
-        console.log(`   Created ${numToReplace} fresh genes with avg fitness: ${avgFreshFitness.toFixed(2)} (range: ${minFreshFitness.toFixed(2)} - ${maxFreshFitness.toFixed(2)})`);
-        console.log(`   Population after: ${popSizeAfter} genes`);
-        console.log(`   ✓ Fresh blood injection complete\n`);
-        } catch (error) {
-          console.error(`❌ [Gen ${this.currentGeneration}] Fresh Blood Injection FAILED:`, error);
-          throw error; // Re-throw to ensure we don't silently fail
-        }
+        console.log(`[Fresh Blood] Gen ${this.currentGeneration}: Injected ${numToReplace} fresh genes into main pool (replaced worst performers)`);
       }
     }
   }

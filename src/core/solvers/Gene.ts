@@ -166,20 +166,28 @@ export class Gene {
 
     if (validA && validB) {
       // Both can squish - apply the transformation
-      // CRITICAL FIX: Determine which room is on the right
-      // The room on the right needs its x position adjusted when width shrinks
+      // SYMMETRIC SQUISH: Push rooms outward in both directions
+      // This allows the cluster to expand left/down as well as right/up
+      const halfShrink = shrinkAmount * 0.5;
+
       if (roomA.x < roomB.x) {
-        // Room B is on the right - increase its x while decreasing width
+        // Room A is on the left, Room B is on the right
+        // Push left room LEFT, push right room RIGHT
+        roomA.x -= halfShrink; // Move A left (Fixes the drift!)
         roomA.width = newWidthA;
         roomA.height = newHeightA;
-        roomB.x += shrinkAmount; // Move left edge to the right
+
+        roomB.x += halfShrink; // Move B right
         roomB.width = newWidthB;
         roomB.height = newHeightB;
       } else {
-        // Room A is on the right - increase its x while decreasing width
-        roomA.x += shrinkAmount; // Move left edge to the right
+        // Room A is on the right, Room B is on the left
+        // Push right room RIGHT, push left room LEFT
+        roomA.x += halfShrink; // Move A right
         roomA.width = newWidthA;
         roomA.height = newHeightA;
+
+        roomB.x -= halfShrink; // Move B left
         roomB.width = newWidthB;
         roomB.height = newHeightB;
       }
@@ -240,20 +248,28 @@ export class Gene {
 
     if (validA && validB) {
       // Both can squish - apply the transformation
-      // CRITICAL FIX: Determine which room is on the bottom
-      // The room on the bottom needs its y position adjusted when height shrinks
+      // SYMMETRIC SQUISH: Push rooms outward in both directions
+      // This allows the cluster to expand down/up symmetrically
+      const halfShrink = shrinkAmount * 0.5;
+
       if (roomA.y < roomB.y) {
-        // Room B is on the bottom - increase its y while decreasing height
+        // Room A is on top (lower Y), Room B is on bottom (higher Y)
+        // Push top room UP (decrease Y), push bottom room DOWN (increase Y)
+        roomA.y -= halfShrink; // Move lower room DOWN
         roomA.width = newWidthA;
         roomA.height = newHeightA;
-        roomB.y += shrinkAmount; // Move top edge down
+
+        roomB.y += halfShrink; // Move upper room UP
         roomB.width = newWidthB;
         roomB.height = newHeightB;
       } else {
-        // Room A is on the bottom - increase its y while decreasing height
-        roomA.y += shrinkAmount; // Move top edge down
+        // Room A is on bottom (higher Y), Room B is on top (lower Y)
+        // Push bottom room DOWN, push top room UP
+        roomA.y += halfShrink; // Move A down
         roomA.width = newWidthA;
         roomA.height = newHeightA;
+
+        roomB.y -= halfShrink; // Move B up
         roomB.width = newWidthB;
         roomB.height = newHeightB;
       }

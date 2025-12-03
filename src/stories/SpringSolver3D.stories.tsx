@@ -2827,9 +2827,7 @@ const SpringSolverVisualization: React.FC<SpringVisualizationArgs> = (args) => {
 
           // Update stats display every 10 frames (reduces React overhead)
           frameCount++;
-          if (frameCount % 10 === 0) {
-            setStatsUpdate((s) => s + 1);
-          }
+          setStatsUpdate((s) => s + 1);
 
           animationIdRef.current = requestAnimationFrame(animate);
         } else {

@@ -13,6 +13,7 @@ export class GeneCollection {
   private config: SpringConfig;
   private globalTargetRatio: number | undefined;
   private currentGeneration: number = 0; // Track generation for simulated annealing
+  private baseRooms: RoomStateES[]; // Store initial room configuration for fresh blood
 
   constructor(
     initialRooms: RoomStateES[],
@@ -25,6 +26,7 @@ export class GeneCollection {
     this.adjacencies = adjacencies;
     this.config = config;
     this.globalTargetRatio = globalTargetRatio;
+    this.baseRooms = initialRooms; // Store for fresh blood initialization
 
     // Initialize population with random variations
     this.initializePopulation(initialRooms);
@@ -155,19 +157,6 @@ export class GeneCollection {
         // Keep the best 75%
         this.genes = this.genes.slice(0, this.genes.length - numToReplace);
 
-        // Get template for structure (room properties) but will randomize positions
-        const templateGene = this.genes[0];
-
-        // Calculate centroid of the BEST gene's rooms
-        // Fresh blood should spawn NEAR the optimal region, not randomly across the entire boundary
-        const bestGene = this.genes[0]; // Already sorted by fitness
-        const centroidX = bestGene.rooms.reduce((sum, r) => sum + r.x, 0) / bestGene.rooms.length;
-        const centroidY = bestGene.rooms.reduce((sum, r) => sum + r.y, 0) / bestGene.rooms.length;
-
-        // Define spawn radius: how far from the centroid to randomize
-        // This maintains locality while introducing diversity
-        const spawnRadius = this.config.freshBloodSpawnRadius ?? 100;
-
         // PREPARE INCUBATION CONFIG
         // Create a "Hyper-Active" config for the warm-up phase to force topological untangling
         const incubationConfig: SpringConfig = {
@@ -181,24 +170,15 @@ export class GeneCollection {
 
         // Generate fresh genes and run INCUBATION PHASE
         for (let i = 0; i < numToReplace; i++) {
-          const freshGene = templateGene.clone();
+          // 1. INITIAL POSITION RESET: Use original room positions from initialization
+          // This ensures fresh blood gets the same starting point as initializePopulation
+          const freshGene = new Gene(this.baseRooms);
 
-          // 1. LOCALIZED RESET: Scramble positions NEAR the best gene's centroid
-          // This prevents layout "explosion" by keeping fresh blood in the optimal region
-          // while still introducing diversity through random offsets
+          // Reset dimensions to initial target values (removes any "squished" bias)
+          // and reset accumulated pressure history to prevent momentum carryover
           for (const room of freshGene.rooms) {
-            // Random position within spawn radius of centroid
-            // Use polar coordinates for uniform distribution in a circle
-            const angle = Math.random() * 2 * Math.PI;
-            const distance = Math.random() * spawnRadius;
-            room.x = centroidX + Math.cos(angle) * distance;
-            room.y = centroidY + Math.sin(angle) * distance;
-
-            // Reset dimensions to initial target values (removes any "squished" bias)
             room.width = Math.sqrt(room.targetArea * room.targetRatio);
             room.height = room.targetArea / room.width;
-
-            // Reset accumulated pressure history to prevent momentum carryover
             room.accumulatedPressureX = 0;
             room.accumulatedPressureY = 0;
           }

@@ -498,7 +498,7 @@ export class Gene {
       const distanceSq = gapX * gapX + gapY * gapY;
 
       // FEATURE: Apply quadratic penalty if enabled
-      const penalty = config.useQuadraticPenalty ? distanceSq**2 : Math.sqrt(distanceSq);
+      const penalty = config.useQuadraticPenalty ? distanceSq : Math.sqrt(distanceSq);
 
       totalDistance += penalty * (adj.weight ?? 1.0);
     }

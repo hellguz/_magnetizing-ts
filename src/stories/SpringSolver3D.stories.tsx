@@ -8,7 +8,7 @@ import { SpringSolver } from '../core/solvers/SpringSolver.js';
 import { RoomState, Adjacency } from '../types.js';
 import { Vec2 } from '../core/geometry/Vector2.js';
 
-type TemplateType = 'small-apartment' | 'office-suite' | 'house' | 'gallery' | 'clinic' | 'restaurant' | 'palace' | 'hotel';
+type TemplateType = 'small-apartment' | 'office-suite' | 'house' | 'large-house' | 'gallery' | 'clinic' | 'restaurant' | 'palace' | 'hotel';
 
 interface SpringTemplate {
   boundary: Vec2[];
@@ -116,6 +116,78 @@ const springTemplates: Record<TemplateType, SpringTemplate> = {
       { a: 'entry', b: 'bedroom-2', weight: 1.0 },
       { a: 'bedroom-1', b: 'bath-1', weight: 2.0 },
       { a: 'bedroom-2', b: 'bath-2', weight: 2.0 },
+    ],
+  },
+  'large-house': {
+    // L-shaped boundary for interesting layout
+    boundary: [
+      { x: 50, y: 50 },      // Top-left corner
+      { x: 700, y: 50 },     // Top-right corner
+      { x: 700, y: 300 },    // Right side, first turn
+      { x: 400, y: 300 },    // Indent (creates L-shape)
+      { x: 400, y: 650 },    // Bottom of vertical part
+      { x: 50, y: 650 },     // Bottom-left corner
+    ],
+    rooms: [
+      // Entrance area
+      { id: 'entrance', x: 100, y: 80, width: 120, height: 100, vx: 0, vy: 0, targetRatio: 1.4 },
+
+      // Long corridor connecting everything
+      { id: 'corridor-1', x: 250, y: 200, width: 200, height: 80, vx: 0, vy: 0, targetRatio: 4 },
+
+      // Living area
+      { id: 'living', x: 350, y: 80, width: 220, height: 160, vx: 0, vy: 0, targetRatio: 1.7 },
+      { id: 'balcony', x: 580, y: 120, width: 100, height: 80, vx: 0, vy: 0, targetRatio: 1.5 },
+
+      // Kitchen and dining
+      { id: 'kitchen', x: 500, y: 250, width: 170, height: 130, vx: 0, vy: 0, targetRatio: 1.4 },
+
+      // 5 Bedrooms
+      { id: 'bedroom-1', x: 100, y: 200, width: 140, height: 120, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bedroom-2', x: 100, y: 350, width: 140, height: 120, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bedroom-3', x: 100, y: 500, width: 130, height: 110, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bedroom-4', x: 250, y: 350, width: 130, height: 110, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'bedroom-5', x: 250, y: 500, width: 130, height: 110, vx: 0, vy: 0, targetRatio: 1.3 },
+
+      // 3 Bathrooms
+      { id: 'bath-1', x: 260, y: 200, width: 90, height: 80, vx: 0, vy: 0, targetRatio: 5 },
+      { id: 'bath-2', x: 100, y: 650, width: 80, height: 70, vx: 0, vy: 0, targetRatio: 5 },
+      { id: 'bath-3', x: 260, y: 650, width: 80, height: 70, vx: 0, vy: 0, targetRatio: 5 },
+
+      // Storage rooms
+      { id: 'storage-1', x: 350, y: 300, width: 100, height: 80, vx: 0, vy: 0, targetRatio: 1.3 },
+      { id: 'storage-2', x: 450, y: 450, width: 90, height: 70, vx: 0, vy: 0, targetRatio: 1.3 },
+    ],
+    adjacencies: [
+      // Entrance connections
+      { a: 'entrance', b: 'corridor-1', weight: 3.0 },
+      { a: 'entrance', b: 'living', weight: 2.5 },
+
+      // Corridor as central hub (connecting all major areas)
+      { a: 'corridor-1', b: 'living', weight: 2.0 },
+      { a: 'corridor-1', b: 'kitchen', weight: 2.0 },
+      { a: 'corridor-1', b: 'bedroom-1', weight: 2.0 },
+      { a: 'corridor-1', b: 'bedroom-2', weight: 2.0 },
+      { a: 'corridor-1', b: 'bedroom-3', weight: 2.0 },
+      { a: 'corridor-1', b: 'bedroom-4', weight: 2.0 },
+      { a: 'corridor-1', b: 'bedroom-5', weight: 2.0 },
+      { a: 'corridor-1', b: 'bath-1', weight: 1.5 },
+      { a: 'corridor-1', b: 'storage-1', weight: 1.0 },
+
+      // Living area connections
+      { a: 'living', b: 'balcony', weight: 2.5 },
+      { a: 'living', b: 'kitchen', weight: 2.0 },
+
+      // Bedroom-bathroom connections
+      { a: 'bedroom-1', b: 'bath-1', weight: 2.5 },
+      { a: 'bedroom-2', b: 'bath-1', weight: 1.5 },
+      { a: 'bedroom-3', b: 'bath-2', weight: 2.5 },
+      { a: 'bedroom-4', b: 'bath-3', weight: 2.5 },
+      { a: 'bedroom-5', b: 'bath-2', weight: 2.0 },
+
+      // Storage connections
+      { a: 'kitchen', b: 'storage-1', weight: 2.0 },
+      { a: 'storage-1', b: 'storage-2', weight: 1.5 },
     ],
   },
   'gallery': {
@@ -770,7 +842,7 @@ const meta: Meta<SpringVisualizationArgs> = {
   argTypes: {
     template: {
       control: { type: 'select' },
-      options: ['small-apartment', 'office-suite', 'house', 'gallery', 'clinic', 'restaurant', 'palace', 'hotel'],
+      options: ['small-apartment', 'office-suite', 'house', 'large-house', 'gallery', 'clinic', 'restaurant', 'palace', 'hotel'],
       description: 'Room configuration template',
     },
     populationSize: {

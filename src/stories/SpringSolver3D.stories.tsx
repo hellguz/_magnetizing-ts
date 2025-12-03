@@ -3042,9 +3042,9 @@ export const Default: Story = {
     template: "howoge-3-room", // Default to 3-room apartment
     populationSize: 25,
     mutationRate: 0.6,
-    mutationStrength: 50,
+    mutationStrength: 40,
     selectionPressure: 0.5,
-    fitnessBalance: 0.3,
+    fitnessBalance: 0.7,
     aspectRatioMutationRate: 0.5,
     boundaryScale: 1.0,
     globalTargetRatio: 2,

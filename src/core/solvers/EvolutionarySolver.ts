@@ -142,13 +142,34 @@ export class EvolutionarySolver {
    */
   private initializePopulation(): void {
     const aabb = Polygon.calculateAABB(this.boundary);
+    const MIN_ASPECT_RATIO = 0.5;
+    const MAX_ASPECT_RATIO = 2.0;
 
     for (let i = 0; i < this.config.populationSize; i++) {
-      const rooms: RoomVariantState[] = this.roomTemplates.map(template => ({
-        ...template,
-        x: aabb.minX + Math.random() * (aabb.maxX - aabb.minX - template.width),
-        y: aabb.minY + Math.random() * (aabb.maxY - aabb.minY - template.height),
-      }));
+      const rooms: RoomVariantState[] = this.roomTemplates.map(template => {
+        // Ensure initial aspect ratio is within bounds
+        let width = template.width;
+        let height = template.height;
+        const aspectRatio = width / height;
+
+        if (aspectRatio > MAX_ASPECT_RATIO) {
+          // Too wide - recalculate dimensions
+          width = Math.sqrt(template.targetArea * MAX_ASPECT_RATIO);
+          height = template.targetArea / width;
+        } else if (aspectRatio < MIN_ASPECT_RATIO) {
+          // Too tall - recalculate dimensions
+          width = Math.sqrt(template.targetArea * MIN_ASPECT_RATIO);
+          height = template.targetArea / width;
+        }
+
+        return {
+          ...template,
+          width,
+          height,
+          x: aabb.minX + Math.random() * (aabb.maxX - aabb.minX - width),
+          y: aabb.minY + Math.random() * (aabb.maxY - aabb.minY - height),
+        };
+      });
 
       const variant: Variant = {
         id: `gen0-var${i}`,
@@ -294,6 +315,9 @@ export class EvolutionarySolver {
   private mutateRotate(variant: Variant): void {
     if (variant.rooms.length === 0) return;
 
+    const MIN_ASPECT_RATIO = 0.5;
+    const MAX_ASPECT_RATIO = 2.0;
+
     // Random angle between 25° and 335°
     const angleDeg = 25 + Math.random() * 310;
     const angleRad = (angleDeg * Math.PI) / 180;
@@ -317,9 +341,16 @@ export class EvolutionarySolver {
       // Swap width/height if angle is close to 90° or 270°
       const normalizedAngle = angleDeg % 180;
       if (normalizedAngle > 45 && normalizedAngle < 135) {
-        const temp = room.width;
-        room.width = room.height;
-        room.height = temp;
+        const newWidth = room.height;
+        const newHeight = room.width;
+        const newAspectRatio = newWidth / newHeight;
+
+        // Only swap if it doesn't violate aspect ratio constraints
+        if (newAspectRatio >= MIN_ASPECT_RATIO && newAspectRatio <= MAX_ASPECT_RATIO) {
+          room.width = newWidth;
+          room.height = newHeight;
+        }
+        // If swap would violate constraints, keep original dimensions
       }
 
       // Update position (top-left corner)
@@ -478,15 +509,15 @@ export class EvolutionarySolver {
     const newHeightA = roomA.targetArea / newWidthA;
     const newHeightB = roomB.targetArea / newWidthB;
 
-    // Check aspect ratio constraints (0.5 to 2.0)
+    // Check aspect ratio constraints - HARD LIMIT: 0.5 to 2.0
     const ratioA = newWidthA / newHeightA;
     const ratioB = newWidthB / newHeightB;
 
-    const minRatio = 1.0 / roomA.targetRatio;
-    const maxRatio = roomA.targetRatio;
+    const MIN_ASPECT_RATIO = 0.5; // min = 1/2
+    const MAX_ASPECT_RATIO = 2.0; // max = 2
 
-    const validA = ratioA >= minRatio && ratioA <= maxRatio;
-    const validB = ratioB >= minRatio && ratioB <= maxRatio;
+    const validA = ratioA >= MIN_ASPECT_RATIO && ratioA <= MAX_ASPECT_RATIO;
+    const validB = ratioB >= MIN_ASPECT_RATIO && ratioB <= MAX_ASPECT_RATIO;
 
     if (validA && validB) {
       // Both can squish
@@ -534,15 +565,15 @@ export class EvolutionarySolver {
     const newWidthA = roomA.targetArea / newHeightA;
     const newWidthB = roomB.targetArea / newHeightB;
 
-    // Check aspect ratio constraints
+    // Check aspect ratio constraints - HARD LIMIT: 0.5 to 2.0
     const ratioA = newWidthA / newHeightA;
     const ratioB = newWidthB / newHeightB;
 
-    const minRatio = 1.0 / roomA.targetRatio;
-    const maxRatio = roomA.targetRatio;
+    const MIN_ASPECT_RATIO = 0.5; // min = 1/2
+    const MAX_ASPECT_RATIO = 2.0; // max = 2
 
-    const validA = ratioA >= minRatio && ratioA <= maxRatio;
-    const validB = ratioB >= minRatio && ratioB <= maxRatio;
+    const validA = ratioA >= MIN_ASPECT_RATIO && ratioA <= MAX_ASPECT_RATIO;
+    const validB = ratioB >= MIN_ASPECT_RATIO && ratioB <= MAX_ASPECT_RATIO;
 
     if (validA && validB) {
       // Both can squish
@@ -583,6 +614,8 @@ export class EvolutionarySolver {
    */
   private applyInflation(variant: Variant): void {
     const inflationRate = 1.05; // 5% growth per iteration
+    const MIN_ASPECT_RATIO = 0.5;
+    const MAX_ASPECT_RATIO = 2.0;
 
     for (const room of variant.rooms) {
       const currentArea = room.width * room.height;
@@ -590,6 +623,18 @@ export class EvolutionarySolver {
       if (currentArea < room.targetArea) {
         room.width *= inflationRate;
         room.height *= inflationRate;
+
+        // Ensure aspect ratio stays within bounds after inflation
+        const aspectRatio = room.width / room.height;
+        if (aspectRatio > MAX_ASPECT_RATIO) {
+          // Too wide - make it narrower
+          room.width = Math.sqrt(room.targetArea * MAX_ASPECT_RATIO);
+          room.height = room.targetArea / room.width;
+        } else if (aspectRatio < MIN_ASPECT_RATIO) {
+          // Too tall - make it wider
+          room.width = Math.sqrt(room.targetArea * MIN_ASPECT_RATIO);
+          room.height = room.targetArea / room.width;
+        }
       }
     }
   }

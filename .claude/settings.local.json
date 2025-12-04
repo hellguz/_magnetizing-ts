@@ -8,7 +8,8 @@
       "Bash(cat:*)",
       "Bash(npm run build:*)",
       "Bash(ls -la \"c:\\Users\\hellg\\Documents\\Projects\\_magnetizing-ts\\src\\stories\\templates\"\" && ls -la \"c:UsershellgDocumentsProjects_magnetizing-tssrcstoriesconfigs\"\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

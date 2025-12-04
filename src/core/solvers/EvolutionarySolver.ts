@@ -6,22 +6,22 @@ import { Polygon } from '../geometry/Polygon.js';
  * Configuration for the Evolutionary Floorplan Solver
  */
 export interface EvolutionaryConfig {
-  populationSize: number;
-  maxGenerations: number;
-  physicsIterations: number;
-  wallConstraintMeters: number;
+  populationSize: number; // Number of base variants (doubled after mutation)
+  maxGenerations: number; // Maximum generations to run
+  physicsIterations: number; // DEPRECATED: Always 10 steps between culling (kept for UI compatibility)
+  wallConstraintMeters: number; // Target shared wall length for adjacent rooms
 
   weights: {
-    wallCompliance: number;
-    overlap: number;
-    outOfBounds: number;
-    area: number;
+    wallCompliance: number; // Weight for wall constraint violations
+    overlap: number; // Weight for room overlaps
+    outOfBounds: number; // Weight for rooms outside boundary
+    area: number; // Weight for area deviation from target
   };
 
   mutationRates: {
-    teleport: number;
-    swap: number;
-    rotate: number;
+    teleport: number; // Probability of teleporting a room
+    swap: number; // Probability of swapping 2-4 rooms
+    rotate: number; // Probability of rotating entire variant
   };
 }
 
@@ -53,11 +53,14 @@ export interface Variant {
   };
 }
 
+// Physics steps between fitness evaluation and culling
+const PHYSICS_STEPS_PER_CYCLE = 10;
+
 // Default configuration
 const DEFAULT_CONFIG: EvolutionaryConfig = {
   populationSize: 25,
   maxGenerations: 100,
-  physicsIterations: 10,
+  physicsIterations: 10, // DEPRECATED: not used (always PHYSICS_STEPS_PER_CYCLE)
   wallConstraintMeters: 1.5,
   weights: {
     wallCompliance: 10.0,
@@ -74,12 +77,17 @@ const DEFAULT_CONFIG: EvolutionaryConfig = {
 
 /**
  * Evolutionary Floorplan Solver
- * Implements a population-based optimization with:
- * - Mutation (Expansion)
- * - Physics (Local Optimization)
- * - Fitness Calculation
- * - Selection (Culling)
- * - Refill
+ *
+ * Algorithm Flow:
+ * 1. Start with 25 base variants + 25 mutated copies = 50 total
+ * 2. Apply physics for 10 iterations to all 50 variants
+ * 3. Calculate fitness and cull to top 25
+ * 4. Duplicate to 25 variants
+ * 5. Mutate to create 50 variants again
+ * 6. Repeat from step 2
+ *
+ * Note: Fitness calculation and culling only happen every 10 physics steps,
+ * allowing rooms to settle and find better configurations.
  */
 export class EvolutionarySolver {
   private population: Variant[] = [];
@@ -90,6 +98,7 @@ export class EvolutionarySolver {
   private roomTemplates: RoomVariantState[];
   private boundaryArea: number;
   private totalTargetArea: number;
+  private physicsStepCounter: number = 0; // Track physics iterations (1-10)
 
   constructor(
     rooms: RoomState[],
@@ -139,12 +148,14 @@ export class EvolutionarySolver {
 
   /**
    * Initialize population with random room positions
+   * Creates 25 base variants, then immediately mutates them to get 50 total
    */
   private initializePopulation(): void {
     const aabb = Polygon.calculateAABB(this.boundary);
     const MIN_ASPECT_RATIO = 0.5;
     const MAX_ASPECT_RATIO = 2.0;
 
+    // Create base population (25 variants)
     for (let i = 0; i < this.config.populationSize; i++) {
       const rooms: RoomVariantState[] = this.roomTemplates.map(template => {
         // Ensure initial aspect ratio is within bounds
@@ -186,8 +197,19 @@ export class EvolutionarySolver {
       this.population.push(variant);
     }
 
-    // Initial fitness calculation
-    this.population.forEach(v => this.calculateFitness(v));
+    // Create mutated copies to reach 50 variants total (matching the main loop)
+    const mutatedVariants: Variant[] = [];
+    for (let i = 0; i < this.population.length; i++) {
+      const clone = this.cloneVariant(
+        this.population[i],
+        `gen0-mutated${i}`
+      );
+      this.mutateVariant(clone);
+      mutatedVariants.push(clone);
+    }
+
+    // Add mutated variants to population (now we have 50 total)
+    this.population.push(...mutatedVariants);
   }
 
   /**
@@ -203,45 +225,58 @@ export class EvolutionarySolver {
   }
 
   /**
-   * Main step function: Expand -> Physics -> Cull -> Refill
+   * Main step function: Physics (10 iterations) -> Fitness -> Cull -> Refill -> Mutation
+   *
+   * Flow:
+   * 1. Apply physics for 1 iteration to all variants
+   * 2. After 10 physics steps: calculate fitness, cull, refill, and mutate
+   * 3. Repeat
    */
   step(): void {
-    this.currentGeneration++;
+    // Increment physics step counter
+    this.physicsStepCounter++;
 
-    // 1. MUTATION (Expansion): Clone and mutate each variant
-    const pool: Variant[] = [...this.population];
-
-    for (let i = 0; i < this.population.length; i++) {
-      const clone = this.cloneVariant(
-        this.population[i],
-        `gen${this.currentGeneration}-clone${i}`
-      );
-      this.mutateVariant(clone);
-      pool.push(clone);
-    }
-
-    // 2. PHYSICS (Local Optimization): Run physics on all variants
-    pool.forEach(variant => {
-      for (let iter = 0; iter < this.config.physicsIterations; iter++) {
-        this.applyPhysics(variant);
-      }
+    // 1. PHYSICS: Apply one physics iteration to all variants
+    this.population.forEach(variant => {
+      this.applyPhysics(variant);
     });
 
-    // 3. FITNESS CALCULATION
-    pool.forEach(variant => this.calculateFitness(variant));
+    // 2. Only after 10 physics steps: FITNESS -> CULL -> REFILL -> MUTATE
+    if (this.physicsStepCounter >= PHYSICS_STEPS_PER_CYCLE) {
+      this.currentGeneration++;
+      this.physicsStepCounter = 0; // Reset counter
 
-    // 4. SELECTION (Culling): Keep top 50%
-    pool.sort((a, b) => a.fitness - b.fitness);
-    const survivors = pool.slice(0, Math.ceil(pool.length / 2));
+      // 2a. FITNESS CALCULATION
+      this.population.forEach(variant => this.calculateFitness(variant));
 
-    // 5. REFILL: Duplicate survivors to reach population size
-    this.population = [];
-    let survivorIndex = 0;
-    for (let i = 0; i < this.config.populationSize; i++) {
-      const original = survivors[survivorIndex % survivors.length];
-      const copy = this.cloneVariant(original, `gen${this.currentGeneration}-var${i}`);
-      this.population.push(copy);
-      survivorIndex++;
+      // 2b. SELECTION (Culling): Keep top 50%
+      this.population.sort((a, b) => a.fitness - b.fitness);
+      const survivors = this.population.slice(0, Math.ceil(this.population.length / 2));
+
+      // 2c. REFILL: Duplicate survivors to reach population size
+      this.population = [];
+      let survivorIndex = 0;
+      for (let i = 0; i < this.config.populationSize; i++) {
+        const original = survivors[survivorIndex % survivors.length];
+        const copy = this.cloneVariant(original, `gen${this.currentGeneration}-var${i}`);
+        this.population.push(copy);
+        survivorIndex++;
+      }
+
+      // 2d. MUTATION (Expansion): Clone and mutate each variant
+      // This creates 2x population (50 variants from 25)
+      const mutatedVariants: Variant[] = [];
+      for (let i = 0; i < this.population.length; i++) {
+        const clone = this.cloneVariant(
+          this.population[i],
+          `gen${this.currentGeneration}-mutated${i}`
+        );
+        this.mutateVariant(clone);
+        mutatedVariants.push(clone);
+      }
+
+      // Add mutated variants to population (now we have 50 total)
+      this.population.push(...mutatedVariants);
     }
   }
 

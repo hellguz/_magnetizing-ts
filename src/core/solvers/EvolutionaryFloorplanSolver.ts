@@ -148,6 +148,23 @@ export class EvolutionaryFloorplanSolver {
     const rooms = gene.rooms;
     if (rooms.length === 0) return;
     const room = rooms[Math.floor(Math.random() * rooms.length)];
+
+    // Randomize aspect ratio within allowed range
+    const maxRatio = this.globalTargetRatio ?? room.targetRatio;
+    const minRatio = 1.0 / maxRatio;
+    // Random aspect ratio (width/height) in range [minRatio, maxRatio]
+    const newAspectRatio = minRatio + Math.random() * (maxRatio - minRatio);
+
+    // Recalculate width and height maintaining target area
+    // area = width * height, aspectRatio = width / height
+    // => width = sqrt(area * aspectRatio), height = sqrt(area / aspectRatio)
+    const newWidth = Math.sqrt(room.targetArea * newAspectRatio);
+    const newHeight = Math.sqrt(room.targetArea / newAspectRatio);
+
+    room.width = newWidth;
+    room.height = newHeight;
+
+    // Teleport to random position
     const boundaryAABB = Polygon.calculateAABB(this.boundary);
     const maxX = boundaryAABB.maxX - room.width;
     const maxY = boundaryAABB.maxY - room.height;

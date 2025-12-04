@@ -58,7 +58,7 @@ export class EvolutionaryGene extends Gene {
    * Measure the length of shared wall between two axis-aligned rectangular rooms.
    */
   private measureSharedWall(roomA: RoomStateES, roomB: RoomStateES): number {
-    const TOLERANCE = 0.1;
+    const TOLERANCE = 1;
 
     const aLeft = roomA.x;
     const aRight = roomA.x + roomA.width;
@@ -90,6 +90,7 @@ export class EvolutionaryGene extends Gene {
 
     return 0;
   }
+
 
   /**
    * Calculate the gap distance between two rooms (0 if touching or overlapping).
@@ -131,8 +132,10 @@ export class EvolutionaryGene extends Gene {
       if (!roomA || !roomB) continue;
 
       const weight = adj.weight ?? 1.0;
+      const exponent = config.overlapPenaltyExponent ?? 1.5;
+
+
       const sharedWall = this.measureSharedWall(roomA, roomB);
-          const exponent = config.overlapPenaltyExponent ?? 1.5;
 
       if (sharedWall >= config.sharedWallTarget) {
         // Brilliant: Target met or exceeded. No penalty.
@@ -148,8 +151,8 @@ export class EvolutionaryGene extends Gene {
         // Bad: Rooms are not touching.
         // Penalty increases with distance ("the longer the distance... the worse").
         const gap = this.calculateGapDistance(roomA, roomB);
-        
-        // Base penalty (10.0) ensures that even being very close but not touching 
+
+        // Base penalty (10.0) ensures that even being very close but not touching
         // is worse than touching with a tiny shared wall.
         // Plus linear distance penalty.
         totalPenalty += Math.pow((10.0 + gap),  exponent) * weight;

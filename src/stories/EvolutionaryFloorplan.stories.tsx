@@ -39,6 +39,12 @@ const EvolutionaryFloorplanVisualization: React.FC<
   // Track solver version to restart animation loop when solver is recreated
   const [solverVersion, setSolverVersion] = useState(0);
 
+  // LOOP CONTROL STATE
+  const [loopPhase, setLoopPhase] = useState<"evolution" | "physics">(
+    "evolution"
+  );
+  const [physicsCounter, setPhysicsCounter] = useState(0);
+
   // Initialize boundary and camera when template or boundary scale changes
   useEffect(() => {
     const template = evolutionaryTemplates[args.template];
@@ -61,7 +67,9 @@ const EvolutionaryFloorplanVisualization: React.FC<
   useEffect(() => {
     const template = evolutionaryTemplates[args.template];
     const { rooms, adjacencies } = template;
-    const currentBoundary = args.editBoundary ? editableBoundary : scaledBoundaryRef.current;
+    const currentBoundary = args.editBoundary
+      ? editableBoundary
+      : scaledBoundaryRef.current;
 
     // Convert RoomState to RoomStateES (add targetArea and pressure fields)
     const roomsES = rooms.map((room) => ({
@@ -95,9 +103,10 @@ const EvolutionaryFloorplanVisualization: React.FC<
       },
       args.globalTargetRatio
     );
-
     // Increment version to signal solver reset
     setSolverVersion((v) => v + 1);
+    setLoopPhase("evolution");
+    setPhysicsCounter(0);
   }, [
     args.template,
     args.sharedWallTarget,
@@ -117,22 +126,53 @@ const EvolutionaryFloorplanVisualization: React.FC<
     editableBoundary,
   ]);
 
-  // Animation loop (autoplay)
+  // NEW: Granular Animation Loop (Dynamics Visualization)
   useEffect(() => {
     if (!args.autoPlay || !solverRef.current) return;
 
-    const intervalMs = 1000 / args.animationSpeed; // generations per second
+    // Calculate speed (frames per second approx)
+    // Higher animationSpeed = faster intervals
+    const intervalMs = Math.max(16, 100 / args.animationSpeed);
+
     const interval = setInterval(() => {
-      if (solverRef.current && !solverRef.current.hasReachedMaxGenerations()) {
-        solverRef.current.step();
+      if (!solverRef.current || solverRef.current.hasReachedMaxGenerations())
+        return;
+
+      if (loopPhase === "evolution") {
+        // Run genetic operators: Selection, Duplication, Mutation
+        solverRef.current.stepEvolution();
+
+        // Reset physics counter and switch phase
+        setPhysicsCounter(0);
+        setLoopPhase("physics");
         setStatsUpdate((s) => s + 1);
+      } else {
+        // Run ONE physics step (squish, attract, translate)
+        solverRef.current.stepPhysics();
+
+        // Increment counter
+        const nextCount = physicsCounter + 1;
+        setPhysicsCounter(nextCount);
+        setStatsUpdate((s) => s + 1);
+
+        // If we've done enough physics steps, go back to evolution
+        // Default was 10, but we can make this smoother or strictly follow config
+        if (nextCount >= 10) {
+          setLoopPhase("evolution");
+        }
       }
     }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [args.autoPlay, args.animationSpeed, solverVersion]);
+  }, [
+    args.autoPlay,
+    args.animationSpeed,
+    solverVersion,
+    loopPhase,
+    physicsCounter,
+  ]);
 
-  // Update population snapshot for grid (throttled to 10Hz)
+  // Update population snapshot for grid (throttled)
   useEffect(() => {
     const interval = setInterval(() => {
       if (solverRef.current) {
@@ -150,7 +190,9 @@ const EvolutionaryFloorplanVisualization: React.FC<
 
   const stats = solverRef.current?.getStats();
   const template = evolutionaryTemplates[args.template];
-  const currentBoundary = args.editBoundary ? editableBoundary : scaledBoundaryRef.current;
+  const currentBoundary = args.editBoundary
+    ? editableBoundary
+    : scaledBoundaryRef.current;
 
   return (
     <div style={{ display: "flex", width: "100%", height: "100vh" }}>
@@ -202,6 +244,14 @@ const EvolutionaryFloorplanVisualization: React.FC<
           </strong>
           <br />
           Generation: <strong>{stats?.generation || 0}</strong> / 100
+          <br />
+          Phase:{" "}
+          <strong
+            style={{ color: loopPhase === "physics" ? "#FF5722" : "#4CAF50" }}
+          >
+            {loopPhase.toUpperCase()}
+          </strong>{" "}
+          ({physicsCounter}/10)
           <br />
           Best Fitness:{" "}
           <strong>{stats?.bestFitness.toFixed(2) || "0.00"}</strong>
@@ -359,7 +409,8 @@ const meta: Meta<EvolutionaryVisualizationArgs> = {
     // Boundary
     editBoundary: {
       control: { type: "boolean" },
-      description: "Enable interactive boundary editing (drag vertices, click midpoints to add)",
+      description:
+        "Enable interactive boundary editing (drag vertices, click midpoints to add)",
     },
     autoScaleBoundary: {
       control: { type: "boolean" },
@@ -398,7 +449,6 @@ type Story = StoryObj<EvolutionaryVisualizationArgs>;
 export const Default: Story = {
   args: evolutionaryDefaults,
 };
-
 // Story with Grid View Hidden
 export const MainViewOnly: Story = {
   args: {
@@ -406,7 +456,6 @@ export const MainViewOnly: Story = {
     showPopulationGrid: false,
   },
 };
-
 // Story with Faster Animation
 export const FastEvolution: Story = {
   args: {
@@ -414,7 +463,6 @@ export const FastEvolution: Story = {
     animationSpeed: 5.0,
   },
 };
-
 // Story with Emphasis on Shared Walls
 export const SharedWallFocus: Story = {
   args: {
@@ -424,7 +472,6 @@ export const SharedWallFocus: Story = {
     areaDeviationWeight: 10,
   },
 };
-
 // Story with More Geometric Constraints
 export const GeometricFocus: Story = {
   args: {

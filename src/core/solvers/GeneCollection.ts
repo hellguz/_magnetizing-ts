@@ -61,7 +61,7 @@ export class GeneCollection {
 
     // Step 1: Apply collision resolution to all genes
     for (const gene of this.genes) {
-      gene.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio);
+      gene.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio, this.adjacencies);
     }
 
     // Step 2: Calculate fitness for all genes
@@ -77,7 +77,6 @@ export class GeneCollection {
     const numOffspring = Math.floor(this.config.populationSize * this.config.crossoverRate);
 
     // FIX: Widen the parent pool. Instead of top 50% (0.5), use top 90% (0.9) or 100%
-    // This allows "worse" genes (like fresh blood) a chance to pass on diversity before dying.
     const parentPoolFraction = 0.5;
     const parentPoolSize = Math.max(2, Math.floor(this.genes.length * parentPoolFraction));
 
@@ -105,10 +104,9 @@ export class GeneCollection {
       );
 
       // FEATURE: Physics Warm-Up - allow mutated genes to settle before evaluation
-      // Run multiple physics iterations immediately to prevent "death of potential geniuses"
       const warmUpIterations = this.config.warmUpIterations ?? 0;
       for (let i = 0; i < warmUpIterations; i++) {
-        child.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio);
+        child.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio, this.adjacencies);
       }
     }
 
@@ -132,10 +130,10 @@ export class GeneCollection {
         this.adjacencies
       );
 
-      // FEATURE: Physics Warm-Up - allow mutated genes to settle before evaluation
+      // FEATURE: Physics Warm-Up
       const warmUpIterations = this.config.warmUpIterations ?? 0;
       for (let i = 0; i < warmUpIterations; i++) {
-        clone.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio);
+        clone.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio, this.adjacencies);
       }
 
       this.genes.push(clone);
@@ -144,14 +142,13 @@ export class GeneCollection {
     // Increment generation counter for simulated annealing
     this.currentGeneration++;
 
-    // FEATURE: Fresh Blood - periodically replace worst performers with new random genes
-    // This maintains genetic diversity and prevents premature convergence
+    // FEATURE: Fresh Blood
     if (this.config.useFreshBlood) {
       const interval = this.config.freshBloodInterval ?? 20;
 
-      // Skip generation 0 (population is already random at initialization)
+      // Skip generation 0
       if (this.currentGeneration > 0 && this.currentGeneration % interval === 0) {
-        // Sort by fitness to identify worst performers (lower is better, so worst are at the end)
+        // Sort by fitness to identify worst performers
         this.genes.sort((a, b) => a.fitness - b.fitness);
 
         // Replace worst quarter with fresh random genes
@@ -162,24 +159,18 @@ export class GeneCollection {
         this.genes = this.genes.slice(0, this.genes.length - numToReplace);
 
         // PREPARE INCUBATION CONFIG
-        // Create a "Hyper-Active" config for the warm-up phase to force topological untangling
         const incubationConfig: SpringConfig = {
           ...this.config,
-          // Force topological tools ON with aggressive parameters
           useSwapMutation: true,
-          swapMutationRate: 0.5,           // Very high swap rate to untangle crossed rooms
+          swapMutationRate: 0.5,
           usePartnerBias: true,
-          partnerBiasRate: 0.8,            // Very high attraction to connected neighbors
+          partnerBiasRate: 0.8,
         };
 
         // Generate fresh genes and run INCUBATION PHASE
         for (let i = 0; i < numToReplace; i++) {
-          // 1. INITIAL POSITION RESET: Use original room positions from initialization
-          // This ensures fresh blood gets the same starting point as initializePopulation
           const freshGene = new Gene(this.baseRooms);
-
-          // Reset dimensions to initial target values (removes any "squished" bias)
-          // and reset accumulated pressure history to prevent momentum carryover
+          // Reset dimensions to initial target values and reset pressure
           for (const room of freshGene.rooms) {
             room.width = Math.sqrt(room.targetArea * room.targetRatio);
             room.height = room.targetArea / room.width;
@@ -187,77 +178,42 @@ export class GeneCollection {
             room.accumulatedPressureY = 0;
           }
 
-          // 2. INCUBATION PHASE: The "Mini-Evolution" / "Boot Camp"
-          // Run a private, accelerated evolution loop to untangle topology before
-          // this gene joins the main population. This prevents "survival of the luckiest"
-          // by allowing the fresh gene to organize itself first.
+          // 2. INCUBATION PHASE
           const warmUpSteps = this.config.freshBloodWarmUp || 100;
-
           for (let j = 0; j < warmUpSteps; j++) {
-            // Step A: AGGRESSIVE MUTATION (The "Pull")
-            // Force topological untangling through swaps, partner attraction, and centering
             freshGene.mutate(
-              0.9,                                    // 90% chance to mutate (very high activity)
-              this.config.mutationStrength * 3.0,    // Violent movement allowed for rapid organization
-              1.0,                                    // 100% aspect ratio adaptation for shape flexibility
+              0.9,
+              this.config.mutationStrength * 3.0,
+              1.0,
               this.globalTargetRatio,
-              incubationConfig,                       // Use hyper-active config
+              incubationConfig,
               this.adjacencies
             );
-
-            // Step B: PHYSICS RESOLUTION (The "Push")
-            // Resolve overlaps and boundary violations created by aggressive mutation
-            freshGene.applySquishCollisions(this.boundary, incubationConfig, this.globalTargetRatio);
+            freshGene.applySquishCollisions(this.boundary, incubationConfig, this.globalTargetRatio, this.adjacencies);
           }
 
           // 3. GRADUATION
-          // The gene is now "incubated" and ready to join the main population
-          // Final collision pass to ensure valid state
-          freshGene.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio);
-
-          // CRITICAL: Calculate fitness so the gene can compete fairly
-          // Without this, fresh genes inherit the best fitness from templateGene.clone()
-          // which breaks selection pressure (random genes masquerading as elite)
-          freshGene.calculateFitness(
-            this.boundary,
-            this.adjacencies,
-            this.config.fitnessBalance,
-            this.config
-          );
+          freshGene.applySquishCollisions(this.boundary, this.config, this.globalTargetRatio, this.adjacencies);
+          freshGene.calculateFitness(this.boundary, this.adjacencies, this.config.fitnessBalance, this.config);
 
           this.genes.push(freshGene);
         }
-        console.log(`[Fresh Blood] Gen ${this.currentGeneration}: Injected ${numToReplace} fresh genes into main pool (replaced worst performers)`);
+        console.log(`[Fresh Blood] Gen ${this.currentGeneration}: Injected ${numToReplace} fresh genes into main pool`);
       }
     }
   }
 
-  /**
-   * Get the best gene (lowest fitness)
-   */
   getBest(): Gene {
     // Ensure genes are sorted
     this.genes.sort((a, b) => a.fitness - b.fitness);
     return this.genes[0];
   }
 
-  /**
-   * Get all genes in the population
-   */
   getAll(): Gene[] {
     return [...this.genes];
   }
 
-  /**
-   * Get population statistics for monitoring
-   */
-  getStats(): {
-    bestFitness: number;
-    worstFitness: number;
-    avgFitness: number;
-    bestFitnessG: number;
-    bestFitnessT: number;
-  } {
+  getStats() {
     if (this.genes.length === 0) {
       return {
         bestFitness: Infinity,
@@ -270,7 +226,6 @@ export class GeneCollection {
 
     const fitnesses = this.genes.map(g => g.fitness);
     const best = this.getBest();
-
     return {
       bestFitness: Math.min(...fitnesses),
       worstFitness: Math.max(...fitnesses),

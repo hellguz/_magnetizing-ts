@@ -60,7 +60,7 @@ export class Gene {
     }
 
     const n = this.rooms.length;
-    const MAX_ITERATIONS = 10; // Multiple passes to resolve chain reactions
+    const MAX_ITERATIONS = 2; // Multiple passes to resolve chain reactions
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       let hadCollision = false;
@@ -315,7 +315,7 @@ export class Gene {
    * Uses strict polygon containment instead of AABB clamping.
    */
   private constrainToBoundary(boundary: Vec2[]): void {
-    const MAX_ITERATIONS = 10; // Prevent infinite loops
+    const MAX_ITERATIONS = 2; // Prevent infinite loops
 
     for (const room of this.rooms) {
       let iteration = 0;

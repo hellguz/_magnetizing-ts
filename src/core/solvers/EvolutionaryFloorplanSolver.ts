@@ -39,6 +39,7 @@ export class EvolutionaryFloorplanSolver {
    */
   private initializePopulation(baseRooms: RoomStateES[]): void {
     const boundaryAABB = Polygon.calculateAABB(this.boundary);
+
     for (let i = 0; i < this.config.populationSize; i++) {
       // Create a copy of rooms with randomized positions
       const randomizedRooms = baseRooms.map(room => ({
@@ -46,12 +47,13 @@ export class EvolutionaryFloorplanSolver {
         x: boundaryAABB.minX + Math.random() * (boundaryAABB.maxX - boundaryAABB.minX - room.width),
         y: boundaryAABB.minY + Math.random() * (boundaryAABB.maxY - boundaryAABB.minY - room.height),
       }));
+
       const gene = new EvolutionaryGene(randomizedRooms);
 
       // CRITICAL: Apply boundary constraints and initial physics
       for (let j = 0; j < 20; j++) {
         // Pass adjacencies to enable attraction during initialization too
-        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio, this.adjacencies);
+        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio);
       }
 
       this.population.push(gene);
@@ -65,7 +67,7 @@ export class EvolutionaryFloorplanSolver {
   stepPhysics(): void {
      for (const gene of this.population) {
         // Pass adjacencies here to enable direct attraction forces during physics
-        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio, this.adjacencies);
+        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio);
      }
   }
 
@@ -75,56 +77,69 @@ export class EvolutionaryFloorplanSolver {
    */
   stepEvolution(): void {
     // 1. Fitness Evaluation
+    // Evaluate the ~50 variants from the previous physics phase
     for (const gene of this.population) {
       gene.calculateEvolutionaryFitness(this.boundary, this.adjacencies, this.config);
     }
 
-    // 2. Selection - Keep best 50%
+    // 2. Selection - Sort by fitness (lower is better)
     this.population.sort((a, b) => a.fitness - b.fitness);
-    const numToKeep = Math.ceil(this.config.populationSize * 0.5);
-    const survivors = this.population.slice(0, numToKeep);
 
-    // 3. Duplication - Refill to population size
-    this.population = [];
-    while (this.population.length < this.config.populationSize) {
-      const sourceIndex = this.population.length % survivors.length;
-      const source = survivors[sourceIndex];
-      this.population.push(source.clone());
+    // Keep best ~50% of the TARGET population size (e.g., 13 of 25)
+    // We base this on config.populationSize (25) not the current expanded size (50)
+    const numToKeep = Math.ceil(this.config.populationSize * 0.5); // 13
+    const survivors = this.population.slice(0, numToKeep);
+    
+    // 3. Duplication - Refill to target population size (25)
+    // We create a "base" population of 25 from the 13 survivors
+    const nextGenBase: EvolutionaryGene[] = [];
+    
+    // First, add the elite survivors
+    survivors.forEach(s => nextGenBase.push(s.clone()));
+
+    // Then fill the rest by looping through survivors (Weighted selection could go here, but round-robin is robust)
+    let sourceIndex = 0;
+    while (nextGenBase.length < this.config.populationSize) {
+      const source = survivors[sourceIndex % survivors.length];
+      nextGenBase.push(source.clone());
+      sourceIndex++;
     }
 
-    // 4. Mutation - Apply mutations to the new generation (except elites if desired, but here we mutate all cloned)
-    // Note: We typically keep the top elite unchanged in other GAs, but here we mutate copies.
-    // Let's modify: Keep top 1 elite unchanged? No, existing logic was "Create 25 mutants".
-    // We will follow the pattern: Clone survivors -> Mutate the Clones.
+    // At this point nextGenBase has 25 variants.
     
-    // Existing logic in `step()` was: 
-    // Mutate -> expanded array -> physics -> selection -> duplication.
-    // To match that flow in a granular way:
-    // We just finished selection & duplication. Now we are at start of next gen.
-    // So apply mutations now.
-    
+    // 4. Mutation - Create mutated copies to expand population
+    // "So now we have 25 vars. Then we copy 25 variants and to these copies we apply mutations"
     const mutants: EvolutionaryGene[] = [];
-    for (const parent of this.population) {
-        // We act on the population in place or create new.
-        // Since we just refilled `this.population` with clones, we can mutate them directly.
-        // However, the original `step` logic created mutants separately. 
-        // Let's apply mutation in-place for the granular approach.
+    
+    for (const parent of nextGenBase) {
+        const mutant = parent.clone();
         
+        // Apply 1 to 3 mutations per mutant
         const numMutations = Math.floor(Math.random() * 3) + 1;
         for (let i = 0; i < numMutations; i++) {
              const rand = Math.random();
              const totalProb = this.config.teleportProbability + this.config.swapProbability + this.config.rotationProbability;
+             
+             // BUG FIX: If all probabilities are 0, do not mutate. 
+             // Previously this fell through to 'else' and rotated.
+             if (totalProb <= 0.0001) continue;
+
              const normalizedRand = rand * totalProb;
 
              if (normalizedRand < this.config.teleportProbability) {
-                 this.applyTeleport(parent);
+                 this.applyTeleport(mutant);
              } else if (normalizedRand < this.config.teleportProbability + this.config.swapProbability) {
-                 this.applySwap(parent);
+                 this.applySwap(mutant);
              } else {
-                 this.applyRotation(parent);
+                 this.applyRotation(mutant);
              }
         }
+        mutants.push(mutant);
     }
+
+    // 5. Combine parents + mutants (Total 50 vars)
+    // "So now we have 2*intial num of vars"
+    this.population = [...nextGenBase, ...mutants];
 
     this.generation++;
   }
@@ -137,49 +152,12 @@ export class EvolutionaryFloorplanSolver {
    * 4. Duplication
    */
   step(): void {
-    // Create mutants from current population
-    const mutants = this.applyMutations();
-    // Combine parents + mutants (Elitism + Diversity)
-    // In the original code: `const expanded = [...this.population, ...mutants];`
-    // Then physics on all 50. Then select 13. Then fill back to 25.
-    
-    // To support the new granular flow AND this legacy flow, we need to be careful.
-    // The granular flow modifies `this.population` in place.
-    // The legacy flow expanded the population temporarily.
-    
-    // For consistency, let's switch `step()` to use the granular methods.
-    // But wait, the legacy logic had a specific "Expand -> Physics -> Select" order which is slightly different
-    // from "Select -> Duplicate -> Mutate -> Physics".
-    
-    // Let's keep the legacy logic here for safety, but update it to use the new physics with attraction.
-    const expanded = [...this.population, ...mutants]; 
-
-    // Physics Loop
-    for (const gene of expanded) {
-      for (let i = 0; i < this.config.physicsIterations; i++) {
-        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio, this.adjacencies);
-      }
+    // Legacy support: Just run the granular steps in order
+    // Note: This approximates the loop, but usually stepPhysics is run multiple times
+    this.stepEvolution();
+    for(let i=0; i<this.config.physicsIterations; i++) {
+        this.stepPhysics();
     }
-
-    // Evaluation
-    for (const gene of expanded) {
-      gene.calculateEvolutionaryFitness(this.boundary, this.adjacencies, this.config);
-    }
-
-    // Selection
-    expanded.sort((a, b) => a.fitness - b.fitness);
-    const numToKeep = Math.ceil(this.config.populationSize * 0.5);
-    const survivors = expanded.slice(0, numToKeep);
-
-    // Duplication
-    this.population = [];
-    while (this.population.length < this.config.populationSize) {
-      const sourceIndex = this.population.length % survivors.length;
-      const source = survivors[sourceIndex];
-      this.population.push(source.clone());
-    }
-
-    this.generation++;
   }
 
   simulate(generations: number): void {
@@ -200,6 +178,10 @@ export class EvolutionaryFloorplanSolver {
           this.config.teleportProbability +
           this.config.swapProbability +
           this.config.rotationProbability;
+
+        // BUG FIX: If total probability is 0, skip mutation
+        if (totalProb <= 0.0001) continue;
+        
         const normalizedRand = rand * totalProb;
 
         if (normalizedRand < this.config.teleportProbability) {

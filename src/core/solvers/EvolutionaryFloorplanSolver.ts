@@ -51,8 +51,7 @@ export class EvolutionaryFloorplanSolver {
       const gene = new EvolutionaryGene(randomizedRooms);
 
       // CRITICAL: Apply boundary constraints and initial physics
-      for (let j = 0; j < 20; j++) {
-        // Pass adjacencies to enable attraction during initialization too
+      for (let j = 0; j < 10; j++) {
         gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio);
       }
 
@@ -85,24 +84,9 @@ export class EvolutionaryFloorplanSolver {
     // 2. Selection - Sort by fitness (lower is better)
     this.population.sort((a, b) => a.fitness - b.fitness);
 
-    // Keep best ~20% of the TARGET population size (e.g., 20 of 25)
-    const numToKeep = Math.ceil(this.config.populationSize * 0.8); // 20
-    const survivors = this.population.slice(0, numToKeep);
-    
-    // 3. Duplication - Refill to target population size (25)
-    // We create a "base" population of 25 from the 20 survivors
+    const survivors = this.population.slice(0, this.config.populationSize);
     const nextGenBase: EvolutionaryGene[] = [];
-    
-    // First, add the elite survivors
     survivors.forEach(s => nextGenBase.push(s.clone()));
-
-    // Then fill the rest by looping through survivors (Weighted selection could go here, but round-robin is robust)
-    let sourceIndex = 0;
-    while (nextGenBase.length < this.config.populationSize) {
-      const source = survivors[sourceIndex % survivors.length];
-      nextGenBase.push(source.clone());
-      sourceIndex++;
-    }
 
     // At this point nextGenBase has 25 variants.
     

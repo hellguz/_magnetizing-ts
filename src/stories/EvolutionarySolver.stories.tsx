@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Canvas } from '@react-three/fiber';
-import { Text, Line } from '@react-three/drei';
+import { Text, Line, Edges } from '@react-three/drei';
 import { SceneContainer } from '../visualization/SceneContainer.js';
 import { EvolutionarySolver, type Variant } from '../core/solvers/EvolutionarySolver.js';
 import { Vec2 } from '../core/geometry/Vector2.js';
+import { Adjacency } from '../types.js';
 import { springTemplates, type SpringTemplateType } from './templates/springTemplates.js';
 
 // Filter templates to exclude 'palace' and 'hotel'
@@ -12,47 +13,47 @@ const AVAILABLE_TEMPLATES = Object.keys(springTemplates).filter(
   (key) => key !== 'palace' && key !== 'hotel'
 ) as SpringTemplateType[];
 
-// Color map for rooms
+// Color map matching SpringSystem3D
 const roomColors: Record<string, string> = {
-  living: '#ff6b6b',
-  kitchen: '#4ecdc4',
-  bedroom: '#45b7d1',
+  'living': '#ff6b6b',
+  'kitchen': '#4ecdc4',
+  'bedroom': '#45b7d1',
   'bedroom-1': '#45b7d1',
   'bedroom-2': '#5f8bc4',
   'bedroom-3': '#6a9bd1',
   'bedroom-4': '#7ba8d8',
   'bedroom-5': '#8cb5df',
-  bathroom: '#f7b731',
+  'bathroom': '#f7b731',
   'bath-1': '#f7b731',
   'bath-2': '#f9ca24',
   'bath-3': '#ffd93d',
-  reception: '#a29bfe',
+  'reception': '#a29bfe',
   'office-1': '#fd79a8',
   'office-2': '#fdcb6e',
   'office-3': '#6c5ce7',
-  meeting: '#00b894',
-  restroom: '#fab1a0',
-  entry: '#e17055',
-  dining: '#74b9ff',
+  'meeting': '#00b894',
+  'restroom': '#fab1a0',
+  'entry': '#e17055',
+  'dining': '#74b9ff',
   'dining-main': '#74b9ff',
   'dining-private': '#81ecec',
-  lobby: '#ffeaa7',
+  'lobby': '#ffeaa7',
   'gallery-a': '#dfe6e9',
   'gallery-b': '#b2bec3',
   'gallery-c': '#636e72',
-  storage: '#a29bfe',
+  'storage': '#a29bfe',
   'storage-1': '#9b8fc9',
   'storage-2': '#8b7eb8',
-  balcony: '#98d8c8',
-  waiting: '#55efc4',
+  'balcony': '#98d8c8',
+  'waiting': '#55efc4',
   'exam-1': '#ff7675',
   'exam-2': '#ff7675',
   'exam-3': '#ff7675',
-  lab: '#74b9ff',
-  staff: '#fdcb6e',
-  entrance: '#e17055',
-  bar: '#6c5ce7',
-  restrooms: '#fab1a0',
+  'lab': '#74b9ff',
+  'staff': '#fdcb6e',
+  'entrance': '#e17055',
+  'bar': '#6c5ce7',
+  'restrooms': '#fab1a0',
   'corridor-1': '#808080',
 };
 
@@ -67,7 +68,9 @@ const getRoomColor = (id: string): string => {
 interface VariantViewProps {
   variant: Variant;
   boundary: Vec2[];
+  adjacencies?: Adjacency[];
   showBoundary?: boolean;
+  showAdjacencies?: boolean;
   showLabels?: boolean;
   scale?: number;
 }
@@ -75,22 +78,58 @@ interface VariantViewProps {
 const VariantView: React.FC<VariantViewProps> = ({
   variant,
   boundary,
+  adjacencies = [],
   showBoundary = true,
+  showAdjacencies = true,
   showLabels = true,
   scale = 1,
 }) => {
   return (
     <group scale={[scale, scale, scale]}>
-      {/* Boundary */}
+      {/* Boundary - matching SpringSystem3D style */}
       {showBoundary && (
         <Line
           points={[...boundary.map((p) => [p.x, p.y, 0] as [number, number, number]), [boundary[0].x, boundary[0].y, 0] as [number, number, number]]}
-          color="#555555"
-          lineWidth={2}
+          color="#2c2c2cff"
+          lineWidth={3}
         />
       )}
 
-      {/* Rooms */}
+      {/* Adjacency lines - matching SpringSystem3D style */}
+      {showAdjacencies && adjacencies.map((adj, index) => {
+        const roomA = variant.rooms.find(r => r.id === adj.a);
+        const roomB = variant.rooms.find(r => r.id === adj.b);
+
+        if (!roomA || !roomB) return null;
+
+        const centerA = {
+          x: roomA.x + roomA.width / 2,
+          y: roomA.y + roomA.height / 2,
+        };
+        const centerB = {
+          x: roomB.x + roomB.width / 2,
+          y: roomB.y + roomB.height / 2,
+        };
+
+        return (
+          <line key={`adj-${index}`}>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                count={2}
+                array={new Float32Array([
+                  centerA.x, centerA.y, 0,
+                  centerB.x, centerB.y, 0
+                ])}
+                itemSize={3}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color="#757575" />
+          </line>
+        );
+      })}
+
+      {/* Rooms - matching SpringSystem3D style */}
       {variant.rooms.map((room) => {
         const centerX = room.x + room.width / 2;
         const centerY = room.y + room.height / 2;
@@ -98,20 +137,22 @@ const VariantView: React.FC<VariantViewProps> = ({
 
         return (
           <group key={room.id}>
-            {/* Room box */}
+            {/* Room box with black edges */}
             <mesh position={[centerX, centerY, 0]}>
               <boxGeometry args={[room.width, room.height, 1]} />
-              <meshStandardMaterial color={color} opacity={0.8} transparent />
+              <meshBasicMaterial color={color} opacity={0.8} transparent />
+              <Edges color="black" />
             </mesh>
 
-            {/* Room label */}
+            {/* Room label - matching SpringSystem3D style */}
             {showLabels && (
               <Text
                 position={[centerX, centerY, 1]}
-                fontSize={Math.min(room.width, room.height) * 0.15}
-                color="#000000"
+                fontSize={12}
+                color="black"
                 anchorX="center"
                 anchorY="middle"
+                renderOrder={1}
               >
                 {room.id}
               </Text>
@@ -153,6 +194,7 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
   const [allVariants, setAllVariants] = useState<Variant[]>([]);
   const [generation, setGeneration] = useState(0);
   const [boundary, setBoundary] = useState<Vec2[]>([]);
+  const [adjacencies, setAdjacencies] = useState<Adjacency[]>([]);
   const [solverVersion, setSolverVersion] = useState(0);
 
   // Initialize solver when config changes
@@ -190,6 +232,7 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
     setAllVariants(solverRef.current.getAllVariants());
     setGeneration(solverRef.current.getGeneration());
     setBoundary(solverRef.current.getBoundary());
+    setAdjacencies(adjacencies);
     setSolverVersion((v) => v + 1);
   }, [
     args.template,
@@ -267,7 +310,14 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
           {/* Main View (Best Variant) */}
           {bestVariant && (
             <group position={[0, 0, 0]}>
-              <VariantView variant={bestVariant} boundary={boundary} showBoundary={true} showLabels={true} />
+              <VariantView
+                variant={bestVariant}
+                boundary={boundary}
+                adjacencies={adjacencies}
+                showBoundary={true}
+                showAdjacencies={true}
+                showLabels={true}
+              />
 
               {/* Main view label */}
               <Text
@@ -305,7 +355,9 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
                   <VariantView
                     variant={variant}
                     boundary={boundary}
+                    adjacencies={adjacencies}
                     showBoundary={true}
+                    showAdjacencies={false}
                     showLabels={false}
                     scale={args.gridScale}
                   />

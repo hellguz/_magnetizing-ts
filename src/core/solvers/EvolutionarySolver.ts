@@ -418,34 +418,59 @@ export class EvolutionarySolver {
 
   /**
    * Apply boundary repulsion to keep rooms inside
+   * STRICT CONSTRAINT: Iteratively ensures ALL room corners are inside boundary
+   * Matches SpringSolver/Gene.ts constrainToBoundary logic
    */
   private applyBoundaryRepulsion(variant: Variant): void {
+    const MAX_ITERATIONS = 10; // Prevent infinite loops
+
     for (const room of variant.rooms) {
-      const corners: Vec2[] = [
-        { x: room.x, y: room.y },
-        { x: room.x + room.width, y: room.y },
-        { x: room.x + room.width, y: room.y + room.height },
-        { x: room.x, y: room.y + room.height },
-      ];
+      // Iteratively push room inside until all corners are contained
+      for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+        const corners: Vec2[] = [
+          { x: room.x, y: room.y },
+          { x: room.x + room.width, y: room.y },
+          { x: room.x + room.width, y: room.y + room.height },
+          { x: room.x, y: room.y + room.height },
+        ];
 
-      // Find farthest outside corner
-      let maxPushX = 0;
-      let maxPushY = 0;
+        let allInside = true;
+        let farthestOutsideCorner: Vec2 | null = null;
+        let maxDistSq = 0;
 
-      for (const corner of corners) {
-        if (!Polygon.pointInPolygon(corner, this.boundary)) {
-          const closest = Polygon.closestPointOnPolygon(corner, this.boundary);
-          const pushX = closest.x - corner.x;
-          const pushY = closest.y - corner.y;
+        for (const corner of corners) {
+          if (!Polygon.pointInPolygon(corner, this.boundary)) {
+            allInside = false;
+            // Find the farthest outside corner
+            const closestOnBoundary = Polygon.closestPointOnPolygon(corner, this.boundary);
+            const distSq =
+              (corner.x - closestOnBoundary.x) ** 2 + (corner.y - closestOnBoundary.y) ** 2;
 
-          if (Math.abs(pushX) > Math.abs(maxPushX)) maxPushX = pushX;
-          if (Math.abs(pushY) > Math.abs(maxPushY)) maxPushY = pushY;
+            if (distSq > maxDistSq) {
+              maxDistSq = distSq;
+              farthestOutsideCorner = corner;
+            }
+          }
+        }
+
+        // All corners inside - we're done
+        if (allInside) {
+          break;
+        }
+
+        // Push the room towards the boundary
+        if (farthestOutsideCorner) {
+          const closestOnBoundary = Polygon.closestPointOnPolygon(farthestOutsideCorner, this.boundary);
+
+          // Calculate push direction (from outside corner to boundary)
+          const pushX = closestOnBoundary.x - farthestOutsideCorner.x;
+          const pushY = closestOnBoundary.y - farthestOutsideCorner.y;
+
+          // Apply with slight overshoot to ensure we get inside
+          room.x += pushX * 1.1;
+          room.y += pushY * 1.1;
         }
       }
-
-      // Apply push with overshoot
-      room.x += maxPushX * 1.2;
-      room.y += maxPushY * 1.2;
     }
   }
 

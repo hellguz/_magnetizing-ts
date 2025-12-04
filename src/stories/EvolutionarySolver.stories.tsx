@@ -1,7 +1,8 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Text, Line, Edges } from '@react-three/drei';
+import * as THREE from 'three';
 import { SceneContainer } from '../visualization/SceneContainer.js';
 import { EvolutionarySolver, type Variant } from '../core/solvers/EvolutionarySolver.js';
 import { Vec2 } from '../core/geometry/Vector2.js';
@@ -14,7 +15,8 @@ const AVAILABLE_TEMPLATES = Object.keys(springTemplates).filter(
 ) as SpringTemplateType[];
 
 // Color map matching SpringSystem3D
-const roomColors: Record<string, string> = {
+// Note: Defined outside component to avoid recreation on every render
+const ROOM_COLORS: Record<string, string> = {
   'living': '#ff6b6b',
   'kitchen': '#4ecdc4',
   'bedroom': '#45b7d1',
@@ -57,9 +59,198 @@ const roomColors: Record<string, string> = {
   'corridor-1': '#808080',
 };
 
-// Get color for a room
+/**
+ * Get color for a room by ID
+ * Note: Defined outside component to avoid recreation on every render
+ */
 const getRoomColor = (id: string): string => {
-  return roomColors[id] || '#cccccc';
+  return ROOM_COLORS[id] || '#cccccc';
+};
+
+/**
+ * BestVariantView: Optimized component for the best variant with imperative updates
+ * Uses refs and useFrame for 60fps updates without triggering React re-renders
+ */
+interface BestVariantViewProps {
+  solverRef: React.MutableRefObject<EvolutionarySolver | null>;
+  boundary: Vec2[];
+  adjacencies: Adjacency[];
+  showBoundary?: boolean;
+  showAdjacencies?: boolean;
+  showLabels?: boolean;
+}
+
+const BestVariantView: React.FC<BestVariantViewProps> = ({
+  solverRef,
+  boundary,
+  adjacencies,
+  showBoundary = true,
+  showAdjacencies = true,
+  showLabels = true,
+}) => {
+  // Store mesh and text references for imperative updates
+  const meshRefsMap = useRef<Map<string, THREE.Mesh>>(new Map());
+  const textRefsMap = useRef<Map<string, any>>(new Map());
+  const lineRefsMap = useRef<Map<number, THREE.Line>>(new Map());
+
+  // Store initial room snapshot for rendering structure
+  const [roomsSnapshot, setRoomsSnapshot] = useState<any[]>([]);
+
+  // Initialize room snapshot when solver changes
+  useEffect(() => {
+    if (solverRef.current) {
+      const bestVariant = solverRef.current.getBest();
+      setRoomsSnapshot(bestVariant.rooms);
+    }
+  }, [solverRef]);
+
+  // Update mesh positions imperatively every frame (no React re-render!)
+  useFrame(() => {
+    if (!solverRef.current) return;
+
+    const bestVariant = solverRef.current.getBest();
+    const rooms = bestVariant.rooms;
+
+    // Update each room's mesh position imperatively
+    for (const room of rooms) {
+      const mesh = meshRefsMap.current.get(room.id);
+      const text = textRefsMap.current.get(room.id);
+
+      if (mesh) {
+        const centerX = room.x + room.width / 2;
+        const centerY = room.y + room.height / 2;
+
+        // Imperative update - no React re-render!
+        mesh.position.set(centerX, centerY, 0);
+        mesh.scale.set(room.width, room.height, 1);
+
+        if (text) {
+          text.position.set(centerX, centerY, 1);
+        }
+      }
+    }
+
+    // Update adjacency lines imperatively
+    adjacencies.forEach((adj, index) => {
+      const line = lineRefsMap.current.get(index);
+      if (!line) return;
+
+      const roomA = rooms.find((r: any) => r.id === adj.a);
+      const roomB = rooms.find((r: any) => r.id === adj.b);
+
+      if (roomA && roomB && line.geometry) {
+        const centerA = {
+          x: roomA.x + roomA.width / 2,
+          y: roomA.y + roomA.height / 2,
+        };
+        const centerB = {
+          x: roomB.x + roomB.width / 2,
+          y: roomB.y + roomB.height / 2,
+        };
+
+        // Update line geometry positions
+        const positions = line.geometry.attributes.position;
+        if (positions) {
+          positions.setXYZ(0, centerA.x, centerA.y, 0);
+          positions.setXYZ(1, centerB.x, centerB.y, 0);
+          positions.needsUpdate = true;
+        }
+      }
+    });
+  });
+
+  return (
+    <>
+      {/* Boundary */}
+      {showBoundary && boundary.length > 0 && (
+        <Line
+          points={[...boundary.map((p) => [p.x, p.y, 0] as [number, number, number]), [boundary[0].x, boundary[0].y, 0] as [number, number, number]]}
+          color="#2c2c2cff"
+          lineWidth={3}
+        />
+      )}
+
+      {/* Adjacency lines - will be updated imperatively via refs */}
+      {showAdjacencies && adjacencies.map((adj, index) => {
+        const roomA = roomsSnapshot.find((r: any) => r.id === adj.a);
+        const roomB = roomsSnapshot.find((r: any) => r.id === adj.b);
+
+        if (!roomA || !roomB) return null;
+
+        const centerA = {
+          x: roomA.x + roomA.width / 2,
+          y: roomA.y + roomA.height / 2,
+        };
+        const centerB = {
+          x: roomB.x + roomB.width / 2,
+          y: roomB.y + roomB.height / 2,
+        };
+
+        return (
+          <line
+            key={`adj-${index}`}
+            ref={(line: any) => {
+              if (line) lineRefsMap.current.set(index, line);
+            }}
+          >
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                count={2}
+                array={new Float32Array([
+                  centerA.x, centerA.y, 0,
+                  centerB.x, centerB.y, 0
+                ])}
+                itemSize={3}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color="#757575" />
+          </line>
+        );
+      })}
+
+      {/* Rooms - meshes will be updated imperatively via refs */}
+      {roomsSnapshot.map((room: any) => {
+        const color = getRoomColor(room.id);
+        const centerX = room.x + room.width / 2;
+        const centerY = room.y + room.height / 2;
+
+        return (
+          <group key={room.id}>
+            {/* Room box - ref stored for imperative updates */}
+            <mesh
+              ref={(mesh) => {
+                if (mesh) meshRefsMap.current.set(room.id, mesh);
+              }}
+              position={[centerX, centerY, 0]}
+            >
+              {/* Unit cube - will be scaled imperatively in useFrame */}
+              <boxGeometry args={[1, 1, 1]} />
+              <meshBasicMaterial color={color} opacity={0.8} transparent />
+              <Edges color="black" />
+            </mesh>
+
+            {/* Room label - ref stored for imperative updates */}
+            {showLabels && (
+              <Text
+                ref={(text) => {
+                  if (text) textRefsMap.current.set(room.id, text);
+                }}
+                position={[centerX, centerY, 1]}
+                fontSize={12}
+                color="black"
+                anchorX="center"
+                anchorY="middle"
+                renderOrder={1}
+              >
+                {room.id}
+              </Text>
+            )}
+          </group>
+        );
+      })}
+    </>
+  );
 };
 
 /**
@@ -75,7 +266,7 @@ interface VariantViewProps {
   scale?: number;
 }
 
-const VariantView: React.FC<VariantViewProps> = ({
+const VariantView: React.FC<VariantViewProps> = React.memo(({
   variant,
   boundary,
   adjacencies = [],
@@ -84,21 +275,34 @@ const VariantView: React.FC<VariantViewProps> = ({
   showLabels = true,
   scale = 1,
 }) => {
+  // Memoize room lookup map to avoid repeated .find() calls
+  const roomMap = useMemo(() => {
+    const map = new Map();
+    variant.rooms.forEach(room => map.set(room.id, room));
+    return map;
+  }, [variant.rooms]);
+
+  // Memoize boundary points to avoid recreating array on every render
+  const boundaryPoints = useMemo(() => {
+    if (!showBoundary || boundary.length === 0) return [];
+    return [...boundary.map((p) => [p.x, p.y, 0] as [number, number, number]), [boundary[0].x, boundary[0].y, 0] as [number, number, number]];
+  }, [boundary, showBoundary]);
+
   return (
     <group scale={[scale, scale, scale]}>
       {/* Boundary - matching SpringSystem3D style */}
-      {showBoundary && (
+      {showBoundary && boundaryPoints.length > 0 && (
         <Line
-          points={[...boundary.map((p) => [p.x, p.y, 0] as [number, number, number]), [boundary[0].x, boundary[0].y, 0] as [number, number, number]]}
+          points={boundaryPoints}
           color="#2c2c2cff"
           lineWidth={3}
         />
       )}
 
       {/* Adjacency lines - matching SpringSystem3D style */}
-      {showAdjacencies && adjacencies.map((adj, index) => {
-        const roomA = variant.rooms.find(r => r.id === adj.a);
-        const roomB = variant.rooms.find(r => r.id === adj.b);
+      {showAdjacencies && adjacencies.map((adj) => {
+        const roomA = roomMap.get(adj.a);
+        const roomB = roomMap.get(adj.b);
 
         if (!roomA || !roomB) return null;
 
@@ -112,7 +316,7 @@ const VariantView: React.FC<VariantViewProps> = ({
         };
 
         return (
-          <line key={`adj-${index}`}>
+          <line key={`adj-${adj.a}-${adj.b}`}>
             <bufferGeometry>
               <bufferAttribute
                 attach="attributes-position"
@@ -162,7 +366,7 @@ const VariantView: React.FC<VariantViewProps> = ({
       })}
     </group>
   );
-};
+});
 
 /**
  * Story Args Interface
@@ -190,12 +394,24 @@ interface EvolutionaryStoryArgs {
 const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) => {
   const solverRef = useRef<EvolutionarySolver | null>(null);
   const animationIdRef = useRef<number | null>(null);
-  const [bestVariant, setBestVariant] = useState<Variant | null>(null);
-  const [allVariants, setAllVariants] = useState<Variant[]>([]);
-  const [generation, setGeneration] = useState(0);
+
+  // Batch state updates to reduce re-renders (was 3 setState calls = 3 renders per frame)
+  const [solverState, setSolverState] = useState<{
+    bestVariant: Variant | null;
+    allVariants: Variant[];
+    generation: number;
+  }>({
+    bestVariant: null,
+    allVariants: [],
+    generation: 0,
+  });
+
   const [boundary, setBoundary] = useState<Vec2[]>([]);
   const [adjacencies, setAdjacencies] = useState<Adjacency[]>([]);
   const [solverVersion, setSolverVersion] = useState(0);
+
+  // Destructure batched state for easier access
+  const { bestVariant, allVariants, generation } = solverState;
 
   // Initialize solver when config changes
   useEffect(() => {
@@ -227,10 +443,12 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
       },
     });
 
-    // Get initial state
-    setBestVariant(solverRef.current.getBest());
-    setAllVariants(solverRef.current.getAllVariants());
-    setGeneration(solverRef.current.getGeneration());
+    // Get initial state (batched update)
+    setSolverState({
+      bestVariant: solverRef.current.getBest(),
+      allVariants: solverRef.current.getAllVariants(),
+      generation: solverRef.current.getGeneration(),
+    });
     setBoundary(solverRef.current.getBoundary());
     setAdjacencies(adjacencies);
     setSolverVersion((v) => v + 1);
@@ -265,10 +483,12 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
         if (solverRef.current) {
           solverRef.current.step();
 
-          // Update state
-          setBestVariant(solverRef.current.getBest());
-          setAllVariants(solverRef.current.getAllVariants());
-          setGeneration(solverRef.current.getGeneration());
+          // Update state (batched - single render instead of 3)
+          setSolverState({
+            bestVariant: solverRef.current.getBest(),
+            allVariants: solverRef.current.getAllVariants(),
+            generation: solverRef.current.getGeneration(),
+          });
 
           animationIdRef.current = requestAnimationFrame(animate);
         }
@@ -285,33 +505,61 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
     };
   }, [args.autoPlay, solverVersion]);
 
-  // Calculate layout for grid view
-  const boundaryWidth = boundary.length > 0 ? Math.max(...boundary.map((p) => p.x)) - Math.min(...boundary.map((p) => p.x)) : 100;
-  const boundaryHeight = boundary.length > 0 ? Math.max(...boundary.map((p) => p.y)) - Math.min(...boundary.map((p) => p.y)) : 100;
-  const gridCols = 5;
-  const gridSpacing = boundaryWidth * (args.gridScale + 0.2);
-  const gridRowSpacing = boundaryHeight * (args.gridScale + 0.2);
+  // Memoize boundary metrics to avoid recalculating on every render
+  const boundaryMetrics = useMemo(() => {
+    if (boundary.length === 0) {
+      return { width: 100, height: 100, centroid: { x: 0, y: 0 } };
+    }
 
-  // Calculate centroid for camera targeting
-  const centroid =
-    boundary.length > 0
-      ? boundary.reduce(
-          (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
-          { x: 0, y: 0 }
-        )
-      : { x: 0, y: 0 };
-  centroid.x /= boundary.length || 1;
-  centroid.y /= boundary.length || 1;
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    let sumX = 0, sumY = 0;
+
+    for (const p of boundary) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+      sumX += p.x;
+      sumY += p.y;
+    }
+
+    return {
+      width: maxX - minX,
+      height: maxY - minY,
+      centroid: { x: sumX / boundary.length, y: sumY / boundary.length }
+    };
+  }, [boundary]);
+
+  // Memoize grid layout calculations
+  const gridLayout = useMemo(() => ({
+    cols: 5,
+    spacing: boundaryMetrics.width * (args.gridScale + 0.2),
+    rowSpacing: boundaryMetrics.height * (args.gridScale + 0.2)
+  }), [boundaryMetrics.width, boundaryMetrics.height, args.gridScale]);
+
+  // Memoize grid positions to avoid recalculating every frame
+  const gridPositions = useMemo(() => {
+    return allVariants.map((variant, index) => {
+      const row = Math.floor(index / gridLayout.cols);
+      const col = index % gridLayout.cols;
+      return {
+        id: variant.id,
+        x: (col - 2) * gridLayout.spacing,
+        y: -boundaryMetrics.height * 1.8 - row * gridLayout.rowSpacing
+      };
+    });
+  }, [allVariants, gridLayout, boundaryMetrics.height]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <Canvas>
-        <SceneContainer zoom={1} target={[centroid.x, centroid.y, 0]}>
-          {/* Main View (Best Variant) */}
-          {bestVariant && (
+        <SceneContainer zoom={1} target={[boundaryMetrics.centroid.x, boundaryMetrics.centroid.y, 0]}>
+          {/* Main View (Best Variant) - Uses imperative updates for performance */}
+          {solverRef.current && (
             <group position={[0, 0, 0]}>
-              <VariantView
-                variant={bestVariant}
+              <BestVariantView
+                solverRef={solverRef}
                 boundary={boundary}
                 adjacencies={adjacencies}
                 showBoundary={true}
@@ -320,38 +568,39 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
               />
 
               {/* Main view label */}
-              <Text
-                position={[centroid.x, Math.max(...boundary.map((p) => p.y)) + 20, 0]}
-                fontSize={15}
-                color="#ffffff"
-                anchorX="center"
-                anchorY="bottom"
-              >
-                BEST VARIANT
-              </Text>
-              <Text
-                position={[centroid.x, Math.max(...boundary.map((p) => p.y)) + 35, 0]}
-                fontSize={12}
-                color="#ffff00"
-                anchorX="center"
-                anchorY="bottom"
-              >
-                {`Fitness: ${bestVariant.fitness.toFixed(2)}`}
-              </Text>
+              {bestVariant && (
+                <>
+                  <Text
+                    position={[boundaryMetrics.centroid.x, boundaryMetrics.centroid.y + boundaryMetrics.height / 2 + 20, 0]}
+                    fontSize={15}
+                    color="#ffffff"
+                    anchorX="center"
+                    anchorY="bottom"
+                  >
+                    BEST VARIANT
+                  </Text>
+                  <Text
+                    position={[boundaryMetrics.centroid.x, boundaryMetrics.centroid.y + boundaryMetrics.height / 2 + 35, 0]}
+                    fontSize={12}
+                    color="#ffff00"
+                    anchorX="center"
+                    anchorY="bottom"
+                  >
+                    {`Fitness: ${bestVariant.fitness.toFixed(2)}`}
+                  </Text>
+                </>
+              )}
             </group>
           )}
 
           {/* Grid View (All Variants) */}
           {args.showGridView &&
-            allVariants.map((variant, index) => {
-              const row = Math.floor(index / gridCols);
-              const col = index % gridCols;
-
-              const xOffset = (col - 2) * gridSpacing;
-              const yOffset = -boundaryHeight * 1.8 - row * gridRowSpacing;
+            gridPositions.map((pos, index) => {
+              const variant = allVariants[index];
+              if (!variant) return null;
 
               return (
-                <group key={variant.id} position={[xOffset, yOffset, 0]}>
+                <group key={pos.id} position={[pos.x, pos.y, 0]}>
                   <VariantView
                     variant={variant}
                     boundary={boundary}
@@ -364,7 +613,7 @@ const EvolutionarySolverVisualization: React.FC<EvolutionaryStoryArgs> = (args) 
 
                   {/* Fitness score above each grid item */}
                   <Text
-                    position={[0, (boundaryHeight * args.gridScale) / 2 + 8, 0]}
+                    position={[0, (boundaryMetrics.height * args.gridScale) / 2 + 8, 0]}
                     fontSize={8}
                     color={index === 0 ? '#00ff00' : '#ffffff'}
                     anchorX="center"

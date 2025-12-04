@@ -228,13 +228,13 @@ const EvolutionaryFloorplanVisualization: React.FC<
             position: "absolute",
             top: "10px",
             left: "10px",
-            background: "rgba(255,255,255,0.95)",
+            background: "rgba(255,255,255,0)",
             padding: "12px",
             borderRadius: "6px",
             fontFamily: "monospace",
             fontSize: "13px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
             lineHeight: "1.6",
+            pointerEvents: "none",
           }}
         >
           <strong style={{ fontSize: "14px", color: "#2196F3" }}>
@@ -263,16 +263,21 @@ const EvolutionaryFloorplanVisualization: React.FC<
           <br />
           <span style={{ fontSize: "11px" }}>
             &nbsp;&nbsp;Shared Wall:{" "}
-            {stats?.bestFitnessSharedWall.toFixed(2) || "0.00"}
+            {stats?.bestFitnessSharedWall.toFixed(2) || "0.00"} ×{" "}
+            {args.sharedWallWeight} ={" "}
+            <strong>
+              {(
+                (stats?.bestFitnessSharedWall || 0) * args.sharedWallWeight
+              ).toFixed(2)}
+            </strong>
           </span>
           <br />
           <span style={{ fontSize: "11px" }}>
-            &nbsp;&nbsp;Geometric: {stats?.bestFitnessG.toFixed(2) || "0.00"}
-          </span>
-          <br />
-          <br />
-          <span style={{ fontSize: "11px", color: "#666" }}>
-            Population: 25 variants
+            &nbsp;&nbsp;Geometric: {stats?.bestFitnessG.toFixed(2) || "0.00"} ×{" "}
+            {args.geometricWeight} ={" "}
+            <strong>
+              {((stats?.bestFitnessG || 0) * args.geometricWeight).toFixed(2)}
+            </strong>
           </span>
         </div>
 

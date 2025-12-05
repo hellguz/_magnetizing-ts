@@ -7,6 +7,11 @@ export interface EvolutionaryVisualizationArgs {
   // Template
   template: EvolutionaryTemplateType;
 
+  // Evolution
+  maxGenerations: number;
+  physicsIterationsPerGeneration: number;
+  disableMutationInLastSteps: number;
+
   // Mutation operators
   teleportProbability: number;
   swapProbability: number;
@@ -46,6 +51,11 @@ export const evolutionaryDefaults: EvolutionaryVisualizationArgs = {
   // Template
   template: "howoge-3-room",
 
+  // Evolution
+  maxGenerations: 100,
+  physicsIterationsPerGeneration: 10,
+  disableMutationInLastSteps: 10,  // Disable mutations in final 20 generations for settling
+
   // Mutation operators (probabilities should sum to ~1.0 for balanced mutations)
   teleportProbability: 0.4,
   swapProbability: 0.6,
@@ -63,7 +73,7 @@ export const evolutionaryDefaults: EvolutionaryVisualizationArgs = {
   // Visualization
   showPopulationGrid: true,
   autoPlay: true,
-  animationSpeed: 10,             
+  animationSpeed: 10,
   showAdjacencies: true,
   showBoundary: true,
 

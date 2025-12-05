@@ -92,8 +92,8 @@ const EvolutionaryFloorplanVisualization: React.FC<
       adjacencies,
       {
         populationSize: 25,
-        maxGenerations: 100,
-        physicsIterations: 10,
+        maxGenerations: args.maxGenerations,
+        physicsIterations: args.physicsIterationsPerGeneration,
         sharedWallTarget: args.sharedWallTarget,
         sharedWallWeight: args.sharedWallWeight,
         geometricWeight: args.geometricWeight,
@@ -113,6 +113,9 @@ const EvolutionaryFloorplanVisualization: React.FC<
     setPhysicsCounter(0);
   }, [
     args.template,
+    args.maxGenerations,
+    args.physicsIterationsPerGeneration,
+    args.disableMutationInLastSteps,
     args.sharedWallTarget,
     args.sharedWallWeight,
     args.geometricWeight,
@@ -120,6 +123,9 @@ const EvolutionaryFloorplanVisualization: React.FC<
     args.swapProbability,
     args.rotationProbability,
     args.reshapeProbability,
+    args.maxAspectRatio,
+    args.useNonLinearOverlapPenalty,
+    args.overlapPenaltyExponent,
     args.boundaryScale,
     args.globalTargetRatio,
     args.editBoundary,
@@ -139,8 +145,12 @@ const EvolutionaryFloorplanVisualization: React.FC<
         return;
 
       if (loopPhase === "evolution") {
-        // Run genetic operators: Selection, Duplication, Mutation
-        solverRef.current.stepEvolution();
+        const stats = solverRef.current.getStats();
+        const generationsRemaining = args.maxGenerations - (stats?.generation || 0);
+        const shouldDisableMutation = generationsRemaining <= args.disableMutationInLastSteps;
+
+        // Run genetic operators: Selection, Duplication, Mutation (unless disabled)
+        solverRef.current.stepEvolution(shouldDisableMutation);
 
         // Reset physics counter and switch phase
         setPhysicsCounter(0);
@@ -156,8 +166,7 @@ const EvolutionaryFloorplanVisualization: React.FC<
         setStatsUpdate((s) => s + 1);
 
         // If we've done enough physics steps, go back to evolution
-        // Default was 10, but we can make this smoother or strictly follow config
-        if (nextCount >= 10) {
+        if (nextCount >= args.physicsIterationsPerGeneration) {
           setLoopPhase("evolution");
         }
       }
@@ -167,6 +176,9 @@ const EvolutionaryFloorplanVisualization: React.FC<
   }, [
     args.autoPlay,
     args.animationSpeed,
+    args.maxGenerations,
+    args.physicsIterationsPerGeneration,
+    args.disableMutationInLastSteps,
     solverVersion,
     loopPhase,
     physicsCounter,
@@ -239,11 +251,7 @@ const EvolutionaryFloorplanVisualization: React.FC<
             pointerEvents: "none",
           }}
         >
-          <strong style={{ fontSize: "14px", color: "#2196F3" }}>
-            Evolutionary Floorplan Solver
-          </strong>
-          <br />
-          Generation: <strong>{stats?.generation || 0}</strong> / 100
+          Generation: <strong>{stats?.generation || 0}</strong> / {args.maxGenerations}
           <br />
           Phase:{" "}
           <strong
@@ -251,7 +259,15 @@ const EvolutionaryFloorplanVisualization: React.FC<
           >
             {loopPhase.toUpperCase()}
           </strong>{" "}
-          ({physicsCounter}/10)
+          ({physicsCounter}/{args.physicsIterationsPerGeneration})
+          {stats && (args.maxGenerations - stats.generation) <= args.disableMutationInLastSteps && (
+            <>
+              <br />
+              <span style={{ color: "#FF9800", fontSize: "11px" }}>
+                🔒 Mutations Disabled (Settling)
+              </span>
+            </>
+          )}
           <br />
           Best Fitness:{" "}
           <strong>{stats?.bestFitness.toFixed(2) || "0.00"}</strong>
@@ -326,7 +342,7 @@ const meta: Meta<EvolutionaryVisualizationArgs> = {
   title: "Evolutionary Floorplan",
   component: EvolutionaryFloorplanVisualization,
   argTypes: {
-    // Template
+    // === TEMPLATE ===
     template: {
       control: { type: "select" },
       options: [
@@ -344,69 +360,134 @@ const meta: Meta<EvolutionaryVisualizationArgs> = {
         "howoge-5-room",
       ],
       description: "Floorplan template (excludes palace and hotel)",
+      table: { category: "🏠 Template" },
     },
 
-    // Mutation operators
+    // === VISUALIZATION CONTROLS ===
+    autoPlay: {
+      control: { type: "boolean" },
+      description: "Automatically evolve through generations",
+      table: { category: "🎬 Visualization" },
+    },
+    animationSpeed: {
+      control: { type: "range", min: 0.1, max: 10.0, step: 0.1 },
+      description: "Animation speed (higher = faster)",
+      table: { category: "🎬 Visualization" },
+    },
+    showPopulationGrid: {
+      control: { type: "boolean" },
+      description: "Show 5×5 grid of all 25 variants",
+      table: { category: "🎬 Visualization" },
+    },
+    showAdjacencies: {
+      control: { type: "boolean" },
+      description: "Show adjacency relationships between rooms",
+      table: { category: "🎬 Visualization" },
+    },
+    showBoundary: {
+      control: { type: "boolean" },
+      description: "Show boundary outline",
+      table: { category: "🎬 Visualization" },
+    },
+
+    // === EVOLUTION PARAMETERS ===
+    maxGenerations: {
+      control: { type: "range", min: 10, max: 300, step: 10 },
+      description: "Maximum number of generations to run",
+      table: { category: "🧬 Evolution" },
+    },
+    physicsIterationsPerGeneration: {
+      control: { type: "range", min: 1, max: 50, step: 1 },
+      description: "Number of physics steps per generation",
+      table: { category: "🧬 Evolution" },
+    },
+    disableMutationInLastSteps: {
+      control: { type: "range", min: 0, max: 50, step: 5 },
+      description: "Disable mutations in final N generations (for settling)",
+      table: { category: "🧬 Evolution" },
+    },
+
+    // === FITNESS WEIGHTS ===
+    sharedWallTarget: {
+      control: { type: "range", min: 0.0, max: 10.0, step: 0.1 },
+      description: "Target minimum shared wall length (meters in scene units)",
+      table: { category: "⚖️ Fitness Weights" },
+    },
+    sharedWallWeight: {
+      control: { type: "range", min: 1, max: 2000, step: 50 },
+      description: "Priority multiplier for shared wall constraint",
+      table: { category: "⚖️ Fitness Weights" },
+    },
+    geometricWeight: {
+      control: { type: "range", min: 1, max: 100, step: 5 },
+      description: "Weight for geometric penalties (overlap + out-of-bounds)",
+      table: { category: "⚖️ Fitness Weights" },
+    },
+
+    // === MUTATION OPERATORS ===
     teleportProbability: {
       control: { type: "range", min: 0.0, max: 1.0, step: 0.1 },
       description: "Weight for teleport mutation (random repositioning)",
+      table: { category: "🧪 Mutation Operators" },
     },
     swapProbability: {
       control: { type: "range", min: 0.0, max: 1.0, step: 0.1 },
       description: "Weight for swap mutation (2-4 rooms exchange positions)",
+      table: { category: "🧪 Mutation Operators" },
     },
     rotationProbability: {
       control: { type: "range", min: 0.0, max: 1.0, step: 0.1 },
       description:
         "Weight for rotation mutation (rotate entire floorplan 25°-335°)",
+      table: { category: "🧪 Mutation Operators" },
     },
     reshapeProbability: {
       control: { type: "range", min: 0.0, max: 1.0, step: 0.1 },
       description:
         "Weight for reshape mutation (random aspect ratio change of a room)",
+      table: { category: "🧪 Mutation Operators" },
     },
 
-    // Fitness weights
-    sharedWallTarget: {
-      control: { type: "range", min: 0.0, max: 10.0, step: 0.1 },
-      description: "Target minimum shared wall length (meters in scene units)",
-    },
-    sharedWallWeight: {
-      control: { type: "range", min: 1, max: 2000, step: 50 },
-      description: "Priority multiplier for shared wall constraint",
-    },
-    geometricWeight: {
-      control: { type: "range", min: 1, max: 100, step: 5 },
-      description: "Weight for geometric penalties (overlap + out-of-bounds)",
-    },
-
-    // Visualization
-    showPopulationGrid: {
-      control: { type: "boolean" },
-      description: "Show 5×5 grid of all 25 variants",
-    },
-    autoPlay: {
-      control: { type: "boolean" },
-      description: "Automatically evolve through generations",
-    },
-    animationSpeed: {
-      control: { type: "range", min: 0.1, max: 5.0, step: 0.1 },
-      description: "Generations per second",
-    },
-
-    // Boundary
+    // === BOUNDARY CONTROLS ===
     editBoundary: {
       control: { type: "boolean" },
       description:
         "Enable interactive boundary editing (drag vertices, click midpoints to add)",
+      table: { category: "📐 Boundary" },
+    },
+    autoScaleBoundary: {
+      control: { type: "boolean" },
+      description: "Auto-scale boundary to match total room area",
+      table: { category: "📐 Boundary" },
     },
     boundaryScale: {
       control: { type: "range", min: 0.5, max: 2.0, step: 0.05 },
       description: "Manual boundary scale factor",
+      table: { category: "📐 Boundary" },
+    },
+
+    // === PHYSICS CONSTRAINTS ===
+    maxAspectRatio: {
+      control: { type: "range", min: 1.0, max: 5.0, step: 0.1 },
+      description: "Maximum aspect ratio allowed for individual rooms",
+      table: { category: "🔧 Physics" },
     },
     globalTargetRatio: {
       control: { type: "range", min: 1.0, max: 5.0, step: 0.1 },
       description: "Global aspect ratio constraint for all rooms",
+      table: { category: "🔧 Physics" },
+    },
+
+    // === ADVANCED ===
+    useNonLinearOverlapPenalty: {
+      control: { type: "boolean" },
+      description: "Use non-linear penalty for overlaps (exponential penalty)",
+      table: { category: "⚙️ Advanced" },
+    },
+    overlapPenaltyExponent: {
+      control: { type: "range", min: 1.0, max: 3.0, step: 0.1 },
+      description: "Exponent for non-linear overlap penalty",
+      table: { category: "⚙️ Advanced" },
     },
   },
   parameters: {

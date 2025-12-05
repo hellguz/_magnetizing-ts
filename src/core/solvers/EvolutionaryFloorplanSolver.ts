@@ -73,8 +73,9 @@ export class EvolutionaryFloorplanSolver {
   /**
    * Run the evolution phase: Selection, Duplication, Mutation.
    * Creates the next generation of variants.
+   * @param disableMutation - If true, skips mutation phase (for final settling generations)
    */
-  stepEvolution(): void {
+  stepEvolution(disableMutation: boolean = false): void {
     // 1. Fitness Evaluation
     // Evaluate the ~50 variants from the previous physics phase
     for (const gene of this.population) {
@@ -89,42 +90,49 @@ export class EvolutionaryFloorplanSolver {
     survivors.forEach(s => nextGenBase.push(s.clone()));
 
     // At this point nextGenBase has 25 variants.
-    
-    // 4. Mutation - Create mutated copies to expand population
-    // "So now we have 25 vars. Then we copy 25 variants and to these copies we apply mutations"
-    const mutants: EvolutionaryGene[] = [];
-    
-    for (const parent of nextGenBase) {
-        const mutant = parent.clone();
-        
-        // Apply 1 to 3 mutations per mutant
-        const numMutations = Math.floor(Math.random() * 3) + 1;
-        for (let i = 0; i < numMutations; i++) {
-             const rand = Math.random();
-             const totalProb = this.config.teleportProbability + this.config.swapProbability + this.config.rotationProbability + this.config.reshapeProbability;
 
-             // BUG FIX: If all probabilities are 0, do not mutate.
-             // Previously this fell through to 'else' and rotated.
-             if (totalProb <= 0.0001) continue;
+    if (disableMutation) {
+      // Skip mutations - just duplicate survivors for settling phase
+      const duplicates: EvolutionaryGene[] = [];
+      survivors.forEach(s => duplicates.push(s.clone()));
+      this.population = [...nextGenBase, ...duplicates];
+    } else {
+      // 4. Mutation - Create mutated copies to expand population
+      // "So now we have 25 vars. Then we copy 25 variants and to these copies we apply mutations"
+      const mutants: EvolutionaryGene[] = [];
 
-             const normalizedRand = rand * totalProb;
+      for (const parent of nextGenBase) {
+          const mutant = parent.clone();
 
-             if (normalizedRand < this.config.teleportProbability) {
-                 this.applyTeleport(mutant);
-             } else if (normalizedRand < this.config.teleportProbability + this.config.swapProbability) {
-                 this.applySwap(mutant);
-             } else if (normalizedRand < this.config.teleportProbability + this.config.swapProbability + this.config.rotationProbability) {
-                 this.applyRotation(mutant);
-             } else {
-                 this.applyReshape(mutant);
-             }
-        }
-        mutants.push(mutant);
+          // Apply 1 to 3 mutations per mutant
+          const numMutations = Math.floor(Math.random() * 3) + 1;
+          for (let i = 0; i < numMutations; i++) {
+               const rand = Math.random();
+               const totalProb = this.config.teleportProbability + this.config.swapProbability + this.config.rotationProbability + this.config.reshapeProbability;
+
+               // BUG FIX: If all probabilities are 0, do not mutate.
+               // Previously this fell through to 'else' and rotated.
+               if (totalProb <= 0.0001) continue;
+
+               const normalizedRand = rand * totalProb;
+
+               if (normalizedRand < this.config.teleportProbability) {
+                   this.applyTeleport(mutant);
+               } else if (normalizedRand < this.config.teleportProbability + this.config.swapProbability) {
+                   this.applySwap(mutant);
+               } else if (normalizedRand < this.config.teleportProbability + this.config.swapProbability + this.config.rotationProbability) {
+                   this.applyRotation(mutant);
+               } else {
+                   this.applyReshape(mutant);
+               }
+          }
+          mutants.push(mutant);
+      }
+
+      // 5. Combine parents + mutants (Total 50 vars)
+      // "So now we have 2*intial num of vars"
+      this.population = [...nextGenBase, ...mutants];
     }
-
-    // 5. Combine parents + mutants (Total 50 vars)
-    // "So now we have 2*intial num of vars"
-    this.population = [...nextGenBase, ...mutants];
 
     this.generation++;
   }

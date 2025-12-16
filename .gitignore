@@ -42,4 +42,4 @@ tmp/
 temp/
 
 
-.gpt
+.gpt/*.txt

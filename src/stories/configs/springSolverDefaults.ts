@@ -15,9 +15,20 @@ export interface SpringVisualizationArgs {
   // Advanced optimization features
   useSwapMutation: boolean;
   swapMutationRate: number;
-  useAggressiveInflation: boolean;
+
+  // Dynamic Alveolar Inflation (DAI)
+  enableInflation: boolean;
+  inflationTarget: number;
   inflationRate: number;
+
+  // Pressure-Guided Mutation
+  enablePressureMutation: boolean;
+  pressureSensitivity: number;
+
+  // Legacy inflation (deprecated)
+  useAggressiveInflation: boolean;
   inflationThreshold: number;
+
   warmUpIterations: number;
   useFreshBlood: boolean;
   freshBloodInterval: number;
@@ -32,7 +43,7 @@ export const springSolverDefaults: SpringVisualizationArgs = {
   mutationRate: 0.6,
   mutationStrength: 40,
   selectionPressure: 0.5,
-  fitnessBalance: 0.7,
+  fitnessBalance: 0.4, // Lean slightly towards Geometry to resolve aggressive overlaps
   aspectRatioMutationRate: 0.5,
   boundaryScale: 1.0,
   globalTargetRatio: 2,
@@ -41,9 +52,20 @@ export const springSolverDefaults: SpringVisualizationArgs = {
   // Advanced Optimization Features
   useSwapMutation: true,
   swapMutationRate: 0.6,
+
+  // Dynamic Alveolar Inflation (DAI) - New aggressive inflation system
+  enableInflation: true,
+  inflationTarget: 1.2,   // Overfill by 20%
+  inflationRate: 0.05,    // Grow 5% per frame
+
+  // Pressure-Guided Mutation
+  enablePressureMutation: true,
+  pressureSensitivity: 0.8, // High sensitivity to collision pressure
+
+  // Legacy inflation (deprecated - keep for backwards compatibility)
   useAggressiveInflation: false,
-  inflationRate: 1.02,
   inflationThreshold: 1.05,
+
   warmUpIterations: 3,
   useFreshBlood: true,
   freshBloodInterval: 50,

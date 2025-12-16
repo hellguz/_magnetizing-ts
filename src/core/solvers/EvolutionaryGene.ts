@@ -195,8 +195,8 @@ private measureSharedWall(roomA: RoomStateES, roomB: RoomStateES): number {
       (this.fitnessG * config.geometricWeight);
   }
   /**
-   * Calculate geometric fitness (overlaps + out-of-bounds).
-   * Fixed: Now correctly calculates out-of-bounds area.
+   * Calculate geometric fitness (overlaps + out-of-bounds + gaps).
+   * Enhanced with Gap Penalty to force tight packing.
    */
   protected calculateGeometricFitnessEvolutionary(boundary: Vec2[], config: any): number {
     let totalOverlap = 0;
@@ -227,12 +227,30 @@ private measureSharedWall(roomA: RoomStateES, roomB: RoomStateES): number {
       }
     }
 
-    // 2. Calculate Out of Bounds (FIXED: Was previously 0)
+    // 2. Calculate Boundary Coverage (Gap Penalty)
+    const boundaryArea = Polygon.area(boundary);
+    let totalRoomArea = 0;
+
+    // We only count room area that is INSIDE the boundary
     for (const room of this.rooms) {
       const roomPoly = Polygon.createRectangle(room.x, room.y, room.width, room.height);
-      const roomArea = room.width * room.height;
+      const intersection = Polygon.intersectionArea(boundary, roomPoly);
+      totalRoomArea += intersection;
+    }
 
-      // Area inside boundary
+    // GAP PENALTY
+    // If total room area < boundary area, that's bad (whitespace inside envelope)
+    const gapArea = Math.max(0, boundaryArea - totalRoomArea);
+
+    // Weight the gap heavily. We hate gaps.
+    // If we fill 100%, gapPenalty is 0.
+    const gapPenalty = gapArea * 50.0;
+
+    // 3. Calculate Out of Bounds
+    // Note: totalOutOfBounds is calculated from totalRoomArea vs actual room area
+    for (const room of this.rooms) {
+      const roomArea = room.width * room.height;
+      const roomPoly = Polygon.createRectangle(room.x, room.y, room.width, room.height);
       const insideArea = Polygon.intersectionArea(boundary, roomPoly);
       const outsideArea = Math.max(0, roomArea - insideArea);
 
@@ -241,6 +259,8 @@ private measureSharedWall(roomA: RoomStateES, roomB: RoomStateES): number {
 
     // Weighted penalty for out-of-bounds
     const OUT_OF_BOUNDS_PENALTY_MULTIPLIER = 100;
-    return totalOverlap + (totalOutOfBounds * OUT_OF_BOUNDS_PENALTY_MULTIPLIER);
+    const outOfBoundsPenalty = totalOutOfBounds * OUT_OF_BOUNDS_PENALTY_MULTIPLIER;
+
+    return totalOverlap + outOfBoundsPenalty + gapPenalty;
   }
 }

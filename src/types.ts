@@ -36,8 +36,17 @@ export interface SpringConfig {
   swapMutationRate?: number;       // Probability of swap mutation (0.0 to 1.0)
   usePartnerBias?: boolean;        // Bias mutations toward connected neighbors (guides adjacency)
   partnerBiasRate?: number;        // Probability of biased mutation toward partner (0.0 to 1.0)
+  // Dynamic Alveolar Inflation (DAI) - New aggressive inflation system
+  enableInflation?: boolean;       // Enable Dynamic Alveolar Inflation (120% target fill)
+  inflationTarget?: number;        // Target overfill multiplier (e.g., 1.2 = 120% of target area)
+  inflationRate?: number;          // Growth rate per step (e.g., 0.05 = 5% growth)
+
+  // Pressure-Guided Mutation
+  enablePressureMutation?: boolean; // Use collision pressure to guide aspect ratio mutations
+  pressureSensitivity?: number;    // How strongly pressure influences shape (0.0 to 1.0)
+
+  // Legacy inflation (deprecated - use enableInflation instead)
   useAggressiveInflation?: boolean; // Force rooms to grow beyond bounds before squish (fills voids)
-  inflationRate?: number;          // Growth rate per iteration (e.g., 1.02 = 2% growth)
   inflationThreshold?: number;     // Max overgrowth (e.g., 1.05 = 5% larger than target)
   warmUpIterations?: number;       // Number of physics iterations to run immediately after mutation (0-50)
   useFreshBlood?: boolean;         // Periodically replace worst performers with new random genes

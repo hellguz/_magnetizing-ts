@@ -29,6 +29,11 @@ export interface EvolutionaryConfig {
   useQuadraticPenalty?: boolean;
   useNonLinearOverlapPenalty?: boolean;
   overlapPenaltyExponent?: number;
+  usePartnerBias?: boolean;        // Attract connected rooms together
+  partnerBiasRate?: number;        // Strength of adjacency attraction
+  useAggressiveInflation?: boolean; // Expand rooms to fill voids
+  inflationRate?: number;          // Growth rate per physics step
+  inflationThreshold?: number;     // Maximum allowed overgrowth
 }
 
 /**

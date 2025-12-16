@@ -85,5 +85,5 @@ export const evolutionaryDefaults: EvolutionaryVisualizationArgs = {
 
   // Advanced
   useNonLinearOverlapPenalty: true,
-  overlapPenaltyExponent: 1.5,     // Slightly superlinear penalty for overlaps
+  overlapPenaltyExponent: 2.0,     // Quadratic penalty to strongly discourage overlaps
 };

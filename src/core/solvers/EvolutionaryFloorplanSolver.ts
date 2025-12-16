@@ -52,7 +52,7 @@ export class EvolutionaryFloorplanSolver {
 
       // CRITICAL: Apply boundary constraints and initial physics
       for (let j = 0; j < 10; j++) {
-        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio);
+        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio, this.adjacencies);
       }
 
       this.population.push(gene);
@@ -65,8 +65,8 @@ export class EvolutionaryFloorplanSolver {
    */
   stepPhysics(): void {
      for (const gene of this.population) {
-        // Pass adjacencies here to enable direct attraction forces during physics
-        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio);
+        // Pass adjacencies to enable adjacency attraction forces during physics
+        gene.applySquishCollisions(this.boundary, this.config as any, this.globalTargetRatio, this.adjacencies);
      }
   }
 

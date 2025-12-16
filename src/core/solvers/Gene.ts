@@ -47,14 +47,19 @@ export class Gene {
    * FIXED: Now includes multiple iterations to resolve chain reactions
    * FIXED: Pressure accumulation only on first iteration to prevent over-counting
    */
-  applySquishCollisions(boundary: Vec2[], config: SpringConfig, globalTargetRatio?: number): void {
+  applySquishCollisions(boundary: Vec2[], config: SpringConfig, globalTargetRatio?: number, adjacencies?: Adjacency[]): void {
+    // 1. APPLY ATTRACTION (Pull connected rooms together)
+    if (adjacencies && config.usePartnerBias) {
+      this.applyAdjacencyForces(adjacencies, config.partnerBiasRate ?? 0.5);
+    }
+
     // Reset pressure accumulators for all rooms
     for (const room of this.rooms) {
       room.pressureX = 0;
       room.pressureY = 0;
     }
 
-    // FEATURE: Aggressive Inflation - grow rooms before collision resolution
+    // 2. FEATURE: Aggressive Inflation - grow rooms before collision resolution
     if (config.useAggressiveInflation) {
       this.applyAggressiveInflation(config);
     }
@@ -307,6 +312,41 @@ export class Gene {
         room.height *= inflationRate;
         // Note: No collision check here - let squish resolve it
       }
+    }
+  }
+
+  /**
+   * FEATURE: Adjacency Attraction Forces
+   * Pull connected rooms together BEFORE collision resolution.
+   * This eliminates gaps between adjacent rooms.
+   */
+  private applyAdjacencyForces(adjacencies: Adjacency[], strength: number): void {
+    for (const adj of adjacencies) {
+      const roomA = this.rooms.find(r => r.id === adj.a);
+      const roomB = this.rooms.find(r => r.id === adj.b);
+      if (!roomA || !roomB) continue;
+
+      // Calculate room centers
+      const cxA = roomA.x + roomA.width / 2;
+      const cyA = roomA.y + roomA.height / 2;
+      const cxB = roomB.x + roomB.width / 2;
+      const cyB = roomB.y + roomB.height / 2;
+
+      // Vector from A to B
+      const dx = cxB - cxA;
+      const dy = cyB - cyA;
+
+      // Zero-length spring: pull rooms toward each other
+      // Collision resolution (squish) will handle overlaps
+      const weight = (adj.weight || 1.0) * strength;
+
+      // Move A towards B
+      roomA.x += dx * 0.05 * weight;
+      roomA.y += dy * 0.05 * weight;
+
+      // Move B towards A
+      roomB.x -= dx * 0.05 * weight;
+      roomB.y -= dy * 0.05 * weight;
     }
   }
 

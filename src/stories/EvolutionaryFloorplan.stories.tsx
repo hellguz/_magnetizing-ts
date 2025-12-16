@@ -104,6 +104,13 @@ const EvolutionaryFloorplanVisualization: React.FC<
         maxAspectRatio: args.maxAspectRatio,
         useNonLinearOverlapPenalty: args.useNonLinearOverlapPenalty,
         overlapPenaltyExponent: args.overlapPenaltyExponent,
+
+        // ACTIVE PHYSICS: Enable attraction and inflation to fill voids
+        usePartnerBias: true,           // Attract connected rooms together
+        partnerBiasRate: 0.1,           // Moderate attraction strength
+        useAggressiveInflation: true,   // Expand rooms to fill voids
+        inflationRate: 1.005,           // 0.5% growth per physics step
+        inflationThreshold: 1.5,        // Allow up to 150% of target area
       },
       args.globalTargetRatio
     );
